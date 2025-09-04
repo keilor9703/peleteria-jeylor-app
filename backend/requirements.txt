@@ -5,3 +5,18 @@ pydantic
 python-multipart
 pytz
 gunicorn
+
+# Manejo de contraseñas seguras
+passlib[bcrypt]==1.7.4
+
+# JWT y criptografía
+python-jose[cryptography]==3.3.0
+
+# Conexión a base de datos (ejemplo con PostgreSQL, cambia si usas otro motor)
+psycopg2-binary==2.9.9
+
+# Validación de datos
+pydantic==2.7.1
+
+# Alembic para migraciones de BD (opcional pero recomendado)
+alembic==1.13.1
