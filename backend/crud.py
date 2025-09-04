@@ -3,7 +3,7 @@ from sqlalchemy import func
 from typing import Optional, List
 from datetime import date, timedelta, datetime
 from passlib.context import CryptContext
-from . import models, schemas
+import models, schemas
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
