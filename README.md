@@ -1,58 +1,117 @@
 # Sistema de Gestión de Ventas "Peleteria Jeylor"
 
-Este proyecto es un sistema de gestión de ventas completo, diseñado para la "Peleteria Jeylor". Consiste en una aplicación web full-stack con un backend robusto desarrollado en FastAPI (Python) y un frontend interactivo construido con React (JavaScript).
+## Visión General del Proyecto
+
+Este proyecto es un sistema de gestión de ventas integral diseñado específicamente para "Peleteria Jeylor", una empresa dedicada a la venta de productos de peletería. La aplicación es una solución web full-stack que optimiza los procesos de negocio, desde la gestión de clientes y productos hasta el registro de ventas, órdenes de trabajo y generación de reportes. Su objetivo principal es proporcionar una herramienta eficiente y centralizada para la administración de las operaciones diarias, mejorando la toma de decisiones y la productividad.
 
 ## Características Principales
 
--   **Gestión de Ventas:** Registro y seguimiento de ventas, incluyendo detalles de productos y validación de cupo de crédito.
--   **Gestión de Clientes:** Administración de la información de clientes, historial financiero y cuentas por cobrar.
--   **Gestión de Productos:** Catálogo de productos y servicios.
--   **Gestión de Usuarios y Roles:** Sistema de autenticación basado en JWT, con roles y permisos configurables para usuarios y módulos.
--   **Órdenes de Trabajo:** Creación, seguimiento, aprobación/rechazo y gestión de evidencias para órdenes de trabajo.
--   **Reportes:** Diversos reportes para análisis de ventas, productividad, clientes (compradores, deudores) y rentabilidad.
--   **Notificaciones:** Sistema de notificaciones para eventos importantes (ej. órdenes de trabajo enviadas a revisión).
+El sistema ofrece las siguientes funcionalidades clave:
+
+*   **Autenticación y Autorización de Usuarios:**
+    *   Sistema de login seguro basado en JSON Web Tokens (JWT).
+    *   Gestión de usuarios, roles y permisos.
+    *   Control de acceso basado en módulos, permitiendo una configuración granular de lo que cada rol puede ver y hacer.
+*   **Gestión de Clientes:**
+    *   Registro, consulta, edición y eliminación de información de clientes.
+    *   Seguimiento de cuentas por cobrar y historial financiero de cada cliente.
+*   **Gestión de Productos:**
+    *   Catálogo completo de productos con detalles como nombre, descripción, precio y unidad de medida.
+    *   Funcionalidades para añadir, actualizar y eliminar productos.
+*   **Gestión de Ventas:**
+    *   Registro intuitivo de nuevas ventas, incluyendo múltiples productos y cantidades.
+    *   Control del estado de pago (pagado, parcial, pendiente) y validación de crédito.
+    *   Historial detallado de todas las ventas realizadas.
+*   **Gestión de Órdenes de Trabajo:**
+    *   Creación y seguimiento del ciclo de vida de las órdenes de trabajo.
+    *   Procesos de aprobación/rechazo y gestión de evidencias asociadas a cada orden.
+*   **Reportes y Análisis:**
+    *   **Resumen de Ventas:** Visualización de ventas diarias y totales.
+    *   **Reporte de Productividad:** Análisis del rendimiento operativo.
+    *   **Reporte de Rentabilidad:** Evaluación de la rentabilidad de productos y ventas.
+    *   **Reportes de Clientes:** Identificación de clientes compradores, deudores y pagadores.
+*   **Notificaciones:**
+    *   Sistema de notificaciones en tiempo real para eventos importantes (ej. órdenes de trabajo enviadas a revisión).
+*   **Panel del Operador:**
+    *   Dashboard centralizado para una visión rápida de las tareas pendientes, productividad y métricas clave.
+
+## Arquitectura del Sistema
+
+El proyecto sigue una arquitectura cliente-servidor (o de dos capas) bien definida:
+
+*   **Frontend (Cliente):** Desarrollado con **React.js**, es una Single Page Application (SPA) que proporciona la interfaz de usuario interactiva. Se encarga de la presentación de datos, la lógica de la interfaz de usuario y la comunicación con el backend a través de peticiones HTTP.
+*   **Backend (Servidor):** Construido con **FastAPI** (Python), actúa como una API RESTful. Es responsable de la lógica de negocio, la interacción con la base de datos, la autenticación/autorización y la exposición de los endpoints necesarios para que el frontend consuma y manipule los datos.
+
+La comunicación entre el frontend y el backend se realiza mediante peticiones HTTP (GET, POST, PUT, DELETE) que intercambian datos en formato JSON.
+
+```mermaid
+graph TD
+    A[Usuario] -->|Accede a| B(Navegador Web)
+    B -->|Peticiones HTTP (JSON)| C(Frontend React.js)
+    C -->|Peticiones HTTP (JSON)| D(Backend FastAPI)
+    D -->|Consultas SQL| E(Base de Datos SQLite)
+    E -->|Resultados SQL| D
+    D -->|Respuestas HTTP (JSON)| C
+    C -->|Renderiza UI| B
+```
 
 ## Tecnologías Utilizadas
 
 ### Backend (FastAPI)
 
--   **Python 3.x**
--   **FastAPI**: Framework web moderno y rápido para construir APIs.
--   **SQLAlchemy**: ORM para interactuar con la base de datos.
--   **SQLite**: Base de datos ligera basada en archivos (`sales.db`).
--   **Passlib**: Para el hashing seguro de contraseñas.
--   **python-dotenv**: Para la gestión de variables de entorno.
+*   **Lenguaje:** Python 3.x
+*   **Framework Web:** FastAPI (para construir APIs rápidas y modernas)
+*   **ORM:** SQLAlchemy (para la interacción con la base de datos de manera orientada a objetos)
+*   **Base de Datos:** SQLite (base de datos ligera basada en archivos, `sales.db`)
+*   **Validación de Datos:** Pydantic (integrado con FastAPI para la validación y serialización de datos)
+*   **Autenticación:** `python-jose` (para JWT) y `passlib` (para hashing de contraseñas con `bcrypt`)
+*   **Servidor ASGI:** Uvicorn (servidor web asíncrono para FastAPI)
+*   **Gestión de Entorno:** `python-dotenv` (para cargar variables de entorno)
+*   **Otros:** `python-multipart`, `asyncio`, `websockets`, `watchfiles`, `greenlet`, `anyio`, `h11`, `httptools`, `idna`, `sniffio`, `starlette`, `uvloop`, `click`, `colorama`, `cryptography`, `ecdsa`, `pycparser`, `pyOpenSSL`, `PyYAML`, `rsa`, `six`, `typing-extensions`
 
 ### Frontend (React)
 
--   **React**: Librería de JavaScript para construir interfaces de usuario interactivas.
--   **React Router DOM**: Para la navegación y el enrutamiento.
--   **Axios**: Cliente HTTP para realizar peticiones al backend.
--   **Material-UI**: Biblioteca de componentes React para un diseño elegante y responsivo.
--   **React Toastify**: Para mostrar notificaciones y mensajes al usuario.
--   **Chart.js / React-Chartjs-2**: Para la visualización de datos en reportes.
+*   **Lenguaje:** JavaScript (ES6+)
+*   **Librería UI:** React.js
+*   **Enrutamiento:** React Router DOM
+*   **Peticiones HTTP:** Axios
+*   **Componentes UI:** Material-UI (MUI) con `@emotion/react` y `@emotion/styled`
+*   **Estilos Adicionales:** Bootstrap (para algunos componentes y utilidades)
+*   **Notificaciones:** React Toastify
+*   **Visualización de Datos:** Chart.js y React-Chartjs-2
+*   **Herramientas de Desarrollo:** `react-scripts` (para la configuración de Webpack y Babel), `cross-env`
 
 ## Estructura del Proyecto
 
 ```
 AppWeb_PelJeylor/
 ├── backend/                # Contiene el código del backend (API FastAPI)
-│   ├── main.py             # Punto de entrada de la API
-│   ├── models.py           # Definiciones de modelos de base de datos
-│   ├── schemas.py          # Esquemas de datos (Pydantic)
-│   ├── crud.py             # Operaciones CRUD de la base de datos
-│   ├── database.py         # Configuración de la base de datos
-│   └── requirements.txt    # Dependencias de Python
+│   ├── __init__.py         # Inicialización del paquete Python
+│   ├── crud.py             # Operaciones CRUD para la base de datos
+│   ├── database.py         # Configuración de la conexión a la base de datos
+│   ├── main.py             # Punto de entrada de la aplicación FastAPI, define endpoints y lógica principal
+│   ├── models.py           # Definiciones de modelos de SQLAlchemy para la base de datos
+│   ├── requirements.txt    # Lista de dependencias de Python para el backend
+│   ├── schemas.py          # Esquemas de datos Pydantic para validación y serialización
+│   ├── __pycache__/        # Archivos compilados de Python
+│   └── venv/               # Entorno virtual de Python para el backend
 ├── frontend/               # Contiene el código del frontend (Aplicación React)
-│   ├── public/             # Archivos estáticos (index.html, imágenes)
-│   ├── src/                # Código fuente de React
-│   │   ├── api.js          # Configuración de Axios
-│   │   ├── App.js          # Componente principal y rutas
-│   │   └── components/     # Componentes de la UI
-│   └── package.json        # Dependencias y scripts de Node.js
-├── sales.db                # Archivo de la base de datos SQLite (se genera automáticamente)
-├── start_project.bat       # Script para iniciar ambos servidores (Windows)
-└── README.md               # Este archivo
+│   ├── public/             # Archivos estáticos (index.html, favicon, imágenes, etc.)
+│   ├── src/                # Código fuente de la aplicación React
+│   │   ├── api.js          # Configuración de Axios y funciones para interactuar con la API del backend
+│   │   ├── App.js          # Componente principal de React, maneja el enrutamiento y la autenticación
+│   │   ├── index.js        # Punto de entrada de la aplicación React
+│   │   ├── components/     # Directorio que contiene todos los componentes reutilizables de la UI
+│   │   ├── utils/          # Funciones de utilidad (ej. formatters.js)
+│   │   └── ...             # Otros archivos de configuración y estilos
+│   ├── package.json        # Metadatos del proyecto y lista de dependencias de Node.js para el frontend
+│   └── package-lock.json   # Bloqueo de versiones de dependencias de Node.js
+├── sales.db                # Archivo de la base de datos SQLite (se genera automáticamente al iniciar el backend)
+├── start_project.bat       # Script de Windows para iniciar ambos servidores simultáneamente
+├── README.md               # Este archivo de documentación
+├── manual_de_usuario.txt   # Manual de usuario del sistema
+├── manual_tecnico.txt      # Manual técnico del sistema
+└── package.json            # Metadatos del proyecto principal (puede ser redundante si los subproyectos tienen los suyos)
 ```
 
 ## Configuración y Ejecución del Proyecto
@@ -63,9 +122,9 @@ Sigue estos pasos para configurar y ejecutar la aplicación en tu máquina local
 
 Asegúrate de tener instalado lo siguiente:
 
--   **Python 3.x**: Descárgalo e instálalo desde [python.org](https://www.python.org/downloads/).
--   **pip**: El gestor de paquetes de Python (generalmente incluido con Python).
--   **Node.js y npm**: Descárgalo e instálalo desde [nodejs.org](https://nodejs.org/en/download/). `npm` (Node Package Manager) se instala junto con Node.js.
+*   **Python 3.x**: Descárgalo e instálalo desde [python.org](https://www.python.org/downloads/).
+*   **pip**: El gestor de paquetes de Python (generalmente incluido con Python).
+*   **Node.js y npm**: Descárgalo e instálalo desde [nodejs.org](https://nodejs.org/en/download/). `npm` (Node Package Manager) se instala junto con Node.js.
 
 ### Pasos para la Configuración
 
@@ -87,15 +146,15 @@ Asegúrate de tener instalado lo siguiente:
         ```bash
         python -m venv venv
         ```
-        -   **Windows (Símbolo del Sistema/CMD):**
+        *   **Windows (Símbolo del Sistema/CMD):**
             ```cmd
             venv\Scripts\activate.bat
             ```
-        -   **Windows (PowerShell):**
+        *   **Windows (PowerShell):**
             ```powershell
             .\venv\Scripts\Activate.ps1
             ```
-        -   **macOS / Linux:**
+        *   **macOS / Linux:**
             ```bash
             source venv/bin/activate
             ```
@@ -131,16 +190,17 @@ Asegúrate de tener instalado lo siguiente:
         ```
 
     c.  **Configura la URL del Backend en `src/api.js`:**
-        Por defecto, el frontend espera que el backend esté en `http://localhost:8000`. Si tu backend se ejecuta en una IP o puerto diferente, edita `frontend/src/api.js` y actualiza la `baseURL` de Axios:
+        El frontend está configurado para consumir una API desplegada en Render. Si deseas ejecutar el backend localmente, edita `frontend/src/api.js` y actualiza la `baseURL` de Axios para apuntar a tu servidor local (por defecto `http://localhost:8000`):
         ```javascript
         // frontend/src/api.js
         const apiClient = axios.create({
-          baseURL: 'http://localhost:8000', // O la IP/dominio de tu backend
+          baseURL: 'http://localhost:8000', // O la IP/dominio de tu backend local
           headers: {
             'Content-Type': 'application/json',
           },
         });
         ```
+        **Nota:** La configuración actual en `api.js` apunta a `https://peleteria-jeylor-app.onrender.com`. Si vas a trabajar con el backend local, asegúrate de comentar o eliminar la línea que apunta a Render y descomentar/añadir la línea para `localhost`.
 
     d.  **Vuelve al directorio raíz del proyecto:**
         ```bash
@@ -160,7 +220,7 @@ Este script iniciará automáticamente ambos servidores en ventanas de terminal 
     ```cmd
     start_project.bat
     ```
-    Se abrirán dos nuevas ventanas: una para el backend y otra para el frontend. La aplicación se abrirá automáticamente en tu navegador.
+    Se abrirán dos nuevas ventanas: una para el backend y otra para el frontend. La aplicación se abrirá automáticamente en tu navegador (normalmente en `http://localhost:3000`).
 
 #### Opción 2: Inicio Manual (Multiplataforma)
 
@@ -189,8 +249,8 @@ Si no estás en Windows o prefieres iniciar los servidores manualmente, sigue es
 
 La primera vez que inicies el backend, se creará un usuario administrador por defecto:
 
--   **Usuario:** `admin`
--   **Contraseña:** `adminpass`
+*   **Usuario:** `admin`
+*   **Contraseña:** `adminpass`
 
 **¡Importante!** Cambia esta contraseña inmediatamente después del primer inicio de sesión en un entorno de producción.
 
@@ -202,8 +262,8 @@ La base de datos es un archivo SQLite llamado `sales.db`, ubicado en el director
 
 FastAPI genera automáticamente documentación interactiva de la API. Una vez que el servidor backend esté en ejecución, puedes acceder a:
 
--   **Swagger UI:** `http://localhost:8000/docs`
--   **ReDoc:** `http://localhost:8000/redoc`
+*   **Swagger UI:** `http://localhost:8000/docs`
+*   **ReDoc:** `http://localhost:8000/redoc`
 
 ## Acceso desde Otros Dispositivos en la Red Local
 
@@ -218,8 +278,9 @@ Para acceder a la aplicación desde otros dispositivos (celulares, tablets, otra
 
 ## Consideraciones de Seguridad
 
--   **`SECRET_KEY` de JWT:** La clave secreta para la autenticación JWT está hardcodeada en `backend/main.py` para desarrollo. **Es CRÍTICO** moverla a una variable de entorno (`.env`) en un entorno de producción y usar una clave larga y aleatoria.
--   **Credenciales por Defecto:** Cambia las credenciales del usuario `admin` por defecto inmediatamente en producción.
+*   **`SECRET_KEY` de JWT:** La clave secreta para la autenticación JWT está hardcodeada en `backend/main.py` para desarrollo. **Es CRÍTICO** moverla a una variable de entorno (`.env`) en un entorno de producción y usar una clave larga y aleatoria.
+*   **Credenciales por Defecto:** Cambia las credenciales del usuario `admin` por defecto inmediatamente en producción.
+*   **CORS:** Asegúrate de configurar adecuadamente las políticas de CORS en el backend para permitir solo los orígenes de confianza en un entorno de producción.
 
 ## Pruebas
 
@@ -227,16 +288,31 @@ Actualmente, no hay pruebas automatizadas configuradas para el proyecto.
 
 **Recomendaciones:**
 
--   **Backend:** Implementar pruebas unitarias y de integración utilizando `pytest`.
--   **Frontend:** Implementar pruebas unitarias para los componentes utilizando `@testing-library/react` y `jest`.
+*   **Backend:** Implementar pruebas unitarias y de integración utilizando `pytest`.
+*   **Frontend:** Implementar pruebas unitarias para los componentes utilizando `@testing-library/react` y `jest`.
 
 ## Despliegue
 
-Para desplegar esta aplicación en un entorno de producción, considera las siguientes opciones:
+### Despliegue Actual (Backend)
 
--   **Backend:** Usar un servidor de aplicaciones ASGI como Gunicorn o Uvicorn en modo producción. Dockerizar la aplicación para un despliegue consistente.
--   **Frontend:** Construir la aplicación (`npm run build`) y servir los archivos estáticos con un servidor web (Nginx, Apache) o integrarlos directamente en el backend FastAPI. Utilizar servicios de hosting estático o plataformas PaaS (Netlify, Vercel).
+El backend de la aplicación está actualmente desplegado y accesible públicamente en:
+`https://peleteria-jeylor-app.onrender.com`
+
+### Consideraciones para Despliegue en Producción
+
+Para desplegar esta aplicación en un entorno de producción, considera las siguientes opciones y mejores prácticas:
+
+*   **Backend (FastAPI):**
+    *   Utilizar un servidor de aplicaciones ASGI robusto como Gunicorn o Uvicorn en modo producción.
+    *   **Dockerización:** Empaquetar la aplicación FastAPI en un contenedor Docker para asegurar un entorno consistente y reproducible.
+    *   **Variables de Entorno:** Gestionar todas las configuraciones sensibles (claves secretas, credenciales de base de datos) mediante variables de entorno.
+    *   **Base de Datos:** Para producción, se recomienda migrar de SQLite a una base de datos más escalable y robusta como PostgreSQL o MySQL.
+    *   **Servicios PaaS:** Plataformas como Render, Heroku, Google Cloud Run, AWS Elastic Beanstalk son excelentes opciones para desplegar aplicaciones FastAPI.
+
+*   **Frontend (React):**
+    *   **Construcción de Producción:** Generar una versión optimizada para producción de la aplicación React usando `npm run build`. Esto creará una carpeta `build` con todos los archivos estáticos.
+    *   **Servidor Web Estático:** Servir los archivos estáticos generados por el build con un servidor web de alto rendimiento como Nginx o Apache.
+    *   **Integración con Backend:** Los archivos estáticos del frontend pueden ser servidos por el mismo servidor FastAPI (si se configura adecuadamente) o por un servidor web separado.
+    *   **Servicios de Hosting Estático/CDN:** Utilizar servicios como Netlify, Vercel, AWS S3 + CloudFront para un despliegue rápido y global de la aplicación frontend.
 
 ---
-
-
