@@ -9,8 +9,11 @@ from jose import JWTError, jwt
 
 import crud, models, schemas
 from database import SessionLocal, engine
+from models import Base
 
 models.Base.metadata.create_all(bind=engine)
+
+
 
 app = FastAPI()
 
