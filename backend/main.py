@@ -7,8 +7,8 @@ from typing import List, Optional
 from datetime import date, datetime, timedelta
 from jose import JWTError, jwt
 
-from . import crud, models, schemas
-from .database import SessionLocal, engine
+import crud, models, schemas
+from database import SessionLocal, engine
 
 models.Base.metadata.create_all(bind=engine)
 
