@@ -1,0 +1,95 @@
+# Manual de Usuario del Sistema de Gestión de Ventas "Peleteria Jeylor"
+
+Este manual proporciona una guía completa sobre las funcionalidades del sistema de gestión de ventas "Peleteria Jeylor", diseñado para optimizar las operaciones de venta, gestión de clientes, productos y órdenes de trabajo.
+
+## 1. Acceso al Sistema
+
+Para acceder al sistema, abre tu navegador web y navega a la dirección proporcionada por tu administrador (usualmente http://localhost:3000 si lo ejecutas localmente).
+
+### 1.1 Inicio de Sesión
+
+En la pantalla de inicio de sesión, introduce tu nombre de usuario y contraseña.
+*   **Credenciales por defecto (primer inicio):**
+    *   Usuario: `admin`
+    *   Contraseña: `adminpass`
+    **¡Importante!** Se recomienda cambiar la contraseña del usuario `admin` inmediatamente después del primer inicio de sesión por motivos de seguridad.
+
+## 2. Módulos Principales del Sistema
+
+El sistema está organizado en varios módulos clave para facilitar la gestión integral de tu negocio.
+
+### 2.1 Gestión de Ventas
+
+Este módulo permite registrar y dar seguimiento a todas las transacciones de venta.
+*   **Registro de Ventas:** Crea nuevas ventas, asociándolas a clientes y productos específicos.
+*   **Detalles de Productos:** Incluye la cantidad y el precio de los productos vendidos.
+*   **Validación de Cupo de Crédito:** El sistema puede validar automáticamente el cupo de crédito disponible para un cliente antes de finalizar una venta a crédito.
+*   **Seguimiento:** Visualiza el estado de las ventas y su historial.
+
+### 2.2 Gestión de Clientes
+
+Administra la base de datos de tus clientes de forma eficiente.
+*   **Información de Clientes:** Registra y actualiza datos personales y de contacto de los clientes.
+*   **Historial Financiero:** Accede a un resumen de las transacciones pasadas del cliente, incluyendo compras y pagos.
+*   **Cuentas por Cobrar:** Gestiona y da seguimiento a las deudas pendientes de los clientes.
+
+### 2.3 Gestión de Productos
+
+Mantén un catálogo actualizado de todos los productos y servicios que ofrece tu negocio.
+*   **Catálogo:** Visualiza, añade, edita y elimina productos y servicios.
+*   **Detalles:** Cada entrada incluye información como nombre, descripción, precio y si es un producto o un servicio.
+
+### 2.4 Gestión de Usuarios y Roles
+
+Este módulo es accesible para usuarios con permisos de administrador y permite controlar el acceso al sistema.
+*   **Autenticación Segura:** El sistema utiliza un sistema de autenticación basado en tokens (JWT) para proteger el acceso.
+*   **Roles y Permisos:** Asigna diferentes roles a los usuarios (ej. Administrador, Vendedor, Operador), cada uno con permisos específicos para acceder a módulos y funcionalidades.
+*   **Administración de Usuarios:** Crea, edita y desactiva cuentas de usuario.
+
+### 2.5 Órdenes de Trabajo
+
+Gestiona el ciclo de vida de las órdenes de trabajo, desde su creación hasta su finalización.
+*   **Creación:** Genera nuevas órdenes de trabajo, asociándolas a clientes y especificando los productos o servicios requeridos.
+*   **Seguimiento:** Monitorea el estado de cada orden (Borrador, En Revisión, Aprobada, Rechazada, Cerrada).
+*   **Aprobación/Rechazo:** Los administradores pueden aprobar o rechazar órdenes de trabajo que requieren revisión. **Al aprobar una orden de trabajo, el sistema generará automáticamente un registro de venta asociado en el módulo de Gestión de Ventas.**
+*   **Gestión de Evidencias:** Adjunta archivos o imágenes como evidencia del trabajo realizado.
+
+### 2.6 Reportes
+
+Accede a diversos reportes para obtener una visión analítica del rendimiento de tu negocio.
+*   **Análisis de Ventas:** Reportes detallados sobre el volumen y valor de las ventas.
+*   **Productividad:** Monitorea la eficiencia de los operadores o equipos.
+*   **Clientes:**
+    *   **Compradores:** Identifica a tus clientes más activos.
+    *   **Deudores:** Lista de clientes con cuentas por cobrar pendientes.
+    *   **Rentabilidad:** Análisis de la rentabilidad de productos, servicios o ventas.
+
+### 2.7 Notificaciones
+
+El sistema te mantendrá informado sobre eventos importantes.
+*   **Alertas:** Recibe notificaciones en tiempo real sobre acciones clave, como órdenes de trabajo enviadas a revisión o cambios de estado importantes.
+
+## 3. Integración entre Módulos
+
+El sistema está diseñado para que sus módulos interactúen de forma fluida, automatizando procesos y garantizando la coherencia de la información.
+
+### 3.1 Órdenes de Trabajo y Gestión de Ventas
+
+Existe una integración directa entre el módulo de Órdenes de Trabajo y el de Gestión de Ventas:
+*   **Aprobación de Órdenes de Trabajo:** Cuando una orden de trabajo es aprobada por un administrador, el sistema automáticamente crea un nuevo registro de venta en el módulo de Gestión de Ventas. Esta venta incluirá los productos y servicios especificados en la orden de trabajo, facilitando el seguimiento financiero y contable.
+
+### 3.2 Gestión de Clientes y Módulos Financieros
+
+*   **Historial Financiero y Cuentas por Cobrar:** La información detallada de los clientes, incluyendo su historial de compras y pagos, se gestiona centralmente. Esto permite que los módulos de Cuentas por Cobrar y Reportes de Clientes (Deudores/Compradores) accedan a datos actualizados para un seguimiento preciso de las obligaciones y el comportamiento de compra.
+
+### 3.3 Gestión de Usuarios/Roles y Acceso a Módulos
+
+*   **Control de Acceso:** Los roles asignados a cada usuario determinan automáticamente a qué módulos y funcionalidades del sistema tienen acceso. Esto asegura que cada usuario solo pueda realizar las operaciones para las que tiene permiso.
+
+### 3.4 Notificaciones y Eventos del Sistema
+
+*   **Alertas Automáticas:** El sistema genera notificaciones automáticas para informar a los usuarios sobre eventos importantes, como el cambio de estado de una orden de trabajo (ej. de "En Revisión" a "Aprobada" o "Rechazada").
+
+## 4. Soporte y Ayuda
+
+Para cualquier duda o problema, contacta al administrador del sistema.
