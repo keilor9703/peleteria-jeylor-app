@@ -1,0 +1,268 @@
+import React, { useState, useEffect } from 'react';
+import { getPanelOperadorPendientes, getPanelOperadorProductividad, getPanelOperadorHistorial } from '../api';
+import { 
+    Box, Typography, Grid, Card, CardContent, CircularProgress, Alert, 
+    List, ListItem, ListItemText, Divider, Chip, Tabs, Tab, 
+    TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper 
+} from '@mui/material';
+import { Doughnut } from 'react-chartjs-2';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+
+ChartJS.register(ArcElement, Tooltip, Legend);
+
+// Refactored data fetching function
+const fetchPanelData = async (setLoading, setPendientes, setProductividad, setHistorial, setError) => {
+    try {
+        setLoading(true);
+        const [pendientesRes, productividadRes, historialRes] = await Promise.all([
+            getPanelOperadorPendientes(),
+            getPanelOperadorProductividad(),
+            getPanelOperadorHistorial()
+        ]);
+        setPendientes(pendientesRes.data);
+        setProductividad(productividadRes.data);
+        setHistorial(historialRes.data);
+        setError(null);
+    } catch (err) {
+        setError('Error al cargar los datos del panel. Por favor, intente de nuevo más tarde.');
+        console.error(err);
+    } finally {
+        setLoading(false);
+    }
+};
+
+// TabPanel component for conditional rendering
+function TabPanel(props) {
+    const { children, value, index, ...other } = props;
+
+    return (
+        <div
+            role="tabpanel"
+            hidden={value !== index}
+            id={`simple-tabpanel-${index}`}
+            aria-labelledby={`simple-tab-${index}`}
+            {...other}
+        >
+            {value === index && (
+                <Box sx={{ p: 3 }}>
+                    {children}
+                </Box>
+            )}
+        </div>
+    );
+}
+
+function a11yProps(index) {
+    return {
+        id: `simple-tab-${index}`,
+        'aria-controls': `simple-tabpanel-${index}`,
+    };
+}
+
+const PanelOperador = () => {
+    const [pendientes, setPendientes] = useState([]);
+    const [productividad, setProductividad] = useState(null);
+    const [historial, setHistorial] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [currentTab, setCurrentTab] = useState(0); // State for active tab
+
+    // Effect to fetch data on component mount
+    useEffect(() => {
+        fetchPanelData(setLoading, setPendientes, setProductividad, setHistorial, setError);
+    }, []); // Empty dependency array means it runs once on mount
+
+    const handleTabChange = (event, newValue) => {
+        setCurrentTab(newValue);
+    };
+
+    const chartData = {
+        labels: productividad?.grafica_servicios_semana.map(d => d.name) || [],
+        datasets: [
+            {
+                label: 'Unidades de Servicio de la Semana', // Updated label
+                data: productividad?.grafica_servicios_semana.map(d => d.value) || [],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.7)',
+                    'rgba(54, 162, 235, 0.7)',
+                    'rgba(255, 206, 86, 0.7)',
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(153, 102, 255, 0.7)',
+                    'rgba(255, 159, 64, 0.7)',
+                ],
+                borderColor: [
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 206, 86, 1)',
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(255, 159, 64, 1)',
+                ],
+                borderWidth: 1,
+            },
+        ],
+    };
+
+    if (loading) {
+        return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
+    }
+
+    if (error) {
+        return <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>;
+    }
+
+    return (
+        <Box sx={{ p: 3 }}>
+            <Typography variant="h4" gutterBottom color="text.primary">Panel del Operador</Typography>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                <Tabs value={currentTab} onChange={handleTabChange} aria-label="panel de operador tabs">
+                    <Tab label="Órdenes Pendientes" {...a11yProps(0)} />
+                    <Tab label="Productividad" {...a11yProps(1)} />
+                    <Tab label="Historial" {...a11yProps(2)} />
+                </Tabs>
+            </Box>
+
+            <TabPanel value={currentTab} index={0}>
+                <Card elevation={3}>
+                    <CardContent>
+                        <Typography variant="h5" gutterBottom>Órdenes de Trabajo Pendientes</Typography>
+                        <TableContainer component={Paper} sx={{ overflowX: 'auto', backgroundColor: 'background.paper' }}>
+                            <Table sx={{ minWidth: 650 }} aria-label="órdenes de trabajo pendientes">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>ID Orden</TableCell>
+                                        <TableCell>Cliente</TableCell>
+                                        <TableCell>Contacto</TableCell>
+                                        <TableCell>Fecha Creación</TableCell>
+                                        <TableCell>Estado</TableCell>
+                                        <TableCell>Productos</TableCell>
+                                        <TableCell>Servicios</TableCell>
+                                        <TableCell align="right">Total</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {pendientes.length > 0 ? pendientes.map((orden) => (
+                                        <TableRow
+                                            key={orden.id}
+                                            sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                                        >
+                                            <TableCell component="th" scope="row">
+                                                {orden.id}
+                                            </TableCell>
+                                            <TableCell>{orden.cliente_nombre}</TableCell>
+                                            <TableCell>
+                                                <Typography variant="body2">Tel: {orden.cliente_telefono || 'N/A'}</Typography>
+                                                <Typography variant="body2">Dir: {orden.cliente_direccion || 'N/A'}</Typography>
+                                            </TableCell>
+                                            <TableCell>{new Date(orden.fecha_creacion + 'Z').toLocaleString('es-CO', { timeZone: 'America/Bogota' })}</TableCell>
+                                            <TableCell><Chip label={orden.estado} color={orden.estado === 'Aprobada' ? 'primary' : 'warning'} /></TableCell>
+                                            <TableCell>
+                                                <List dense disablePadding>
+                                                    {orden.productos && orden.productos.length > 0 ? orden.productos.map(item => (
+                                                        <ListItem key={item.id} sx={{ pl: 0 }}>
+                                                            <ListItemText
+                                                                primary={`${item.producto.nombre} (x${item.cantidad})`}
+                                                                secondary={`${item.precio_unitario.toLocaleString()}`}
+                                                            />
+                                                        </ListItem>
+                                                    )) : <ListItemText primary="N/A" />}
+                                                </List>
+                                            </TableCell>
+                                            <TableCell>
+                                                <List dense disablePadding>
+                                                    {orden.servicios && orden.servicios.length > 0 ? orden.servicios.map(item => (
+                                                        <ListItem key={item.id} sx={{ pl: 0 }}>
+                                                            <ListItemText
+                                                                primary={`${item.servicio.nombre} (x${item.cantidad})`}
+                                                                secondary={`${item.precio_servicio.toLocaleString()}`}
+                                                            />
+                                                        </ListItem>
+                                                    )) : <ListItemText primary="N/A" />}
+                                                </List>
+                                            </TableCell>
+                                            <TableCell align="right">${orden.total.toLocaleString()}</TableCell>
+                                        </TableRow>
+                                    )) : (
+                                        <TableRow>
+                                            <TableCell colSpan={8} align="center">
+                                                No hay órdenes pendientes.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </CardContent>
+                </Card>
+            </TabPanel>
+
+            <TabPanel value={currentTab} index={1}>
+                <Card elevation={3}>
+                    <CardContent>
+                        <Typography variant="h5" gutterBottom>Panel de Productividad (Unidades)</Typography>
+                        {productividad && (
+                            <Grid container spacing={2} alignItems="center">
+                                <Grid item xs={12} sm={6}>
+                                    <Card sx={{ textAlign: 'center', p: 1, backgroundColor: '#f0f4f8' }}>
+                                        <Typography variant="h6" color="black">{productividad.servicios_hoy}</Typography>
+                                        <Typography variant="body2" color="black">Unidades Hoy</Typography>
+                                    </Card>
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <Card sx={{ textAlign: 'center', p: 1, backgroundColor: '#e8f5e9' }}>
+                                        <Typography variant="h6" color="black">{productividad.servicios_semana}</Typography>
+                                        <Typography variant="body2" color="black">Unidades Semana</Typography>
+                                    </Card>
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <Card sx={{ textAlign: 'center', p: 1, backgroundColor: '#e3f2fd' }}>
+                                        <Typography variant="h6" color="black">{productividad.servicios_mes}</Typography>
+                                        <Typography variant="body2" color="black">Unidades Mes</Typography>
+                                    </Card>
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <Card sx={{ textAlign: 'center', p: 1, backgroundColor: '#fff3e0' }}>
+                                        <Typography variant="h6" color="black">{productividad.ordenes_completadas_semana}</Typography>
+                                        <Typography variant="body2" color="black">Órdenes Cerradas (Semana)</Typography>
+                                    </Card>
+                                </Grid>
+                                <Grid item xs={12} sx={{ mt: 2 }}>
+                                    <Typography variant="h6" align="center">Unidades de Servicio de la Semana</Typography>
+                                    {productividad.grafica_servicios_semana.length > 0 ? (
+                                        <Doughnut data={chartData} />
+                                    ) : (
+                                        <Typography align="center" sx={{ mt: 2 }}>No hay datos de servicios para mostrar.</Typography>
+                                    )}
+                                </Grid>
+                            </Grid>
+                        )}
+                    </CardContent>
+                </Card>
+            </TabPanel>
+
+            <TabPanel value={currentTab} index={2}>
+                <Card elevation={3}>
+                    <CardContent>
+                        <Typography variant="h5" gutterBottom>Historial Reciente (Últimos 7 días)</Typography>
+                        <List>
+                            {historial.length > 0 ? historial.map((orden, index) => (
+                                <React.Fragment key={orden.id}>
+                                    <ListItem>
+                                        <ListItemText 
+                                            primary={`#${orden.id} - ${orden.cliente_nombre}`}
+                                            secondary={`Total: ${orden.total.toLocaleString()} - ${new Date(orden.fecha_actualizacion).toLocaleDateString()}`}
+                                        />
+                                        <Chip label={`Pago: ${orden.estado_pago_venta}`} color={orden.estado_pago_venta === 'pagado' ? 'success' : 'default'} />
+                                    </ListItem>
+                                    {index < historial.length - 1 && <Divider />}
+                                </React.Fragment>
+                            )) : <Typography>No hay órdenes cerradas recientemente.</Typography>}
+                        </List>
+                    </CardContent>
+                </Card>
+            </TabPanel>
+        </Box>
+    );
+};
+
+export default PanelOperador;

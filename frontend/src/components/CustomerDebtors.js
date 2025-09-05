@@ -1,0 +1,159 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+    Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+    Paper, CircularProgress, TableSortLabel
+} from '@mui/material';
+import apiClient from '../api';
+import { formatCurrency } from '../utils/formatters';
+import { toast } from 'react-toastify';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import { Bar } from 'react-chartjs-2';
+import { visuallyHidden, stableSort, getComparator } from '../utils/sortingUtils';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+
+const headCells = [
+    { id: 'client_id', numeric: false, disablePadding: false, label: 'ID Cliente' },
+    { id: 'client_name', numeric: false, disablePadding: false, label: 'Nombre del Cliente' },
+    { id: 'total_debt_amount', numeric: true, disablePadding: false, label: 'Monto Total Adeudado' },
+];
+
+const EnhancedTableHead = (props) => {
+    const { order, orderBy, onRequestSort } = props;
+    const createSortHandler = (property) => (event) => {
+        onRequestSort(event, property);
+    };
+
+    return (
+        <TableHead>
+            <TableRow>
+                {headCells.map((headCell) => (
+                    <TableCell
+                        key={headCell.id}
+                        align={headCell.numeric ? 'right' : 'left'}
+                        padding={headCell.disablePadding ? 'none' : 'normal'}
+                        sortDirection={orderBy === headCell.id ? order : false}
+                    >
+                        <TableSortLabel
+                            active={orderBy === headCell.id}
+                            direction={orderBy === headCell.id ? order : 'asc'}
+                            onClick={createSortHandler(headCell.id)}
+                        >
+                            {headCell.label}
+                            {orderBy === headCell.id ? (
+                                <Box component="span" sx={visuallyHidden}>
+                                    {order === 'desc' ? 'sorted descending' : 'sorted ascending'}
+                                </Box>
+                            ) : null}
+                        </TableSortLabel>
+                    </TableCell>
+                ))}
+            </TableRow>
+        </TableHead>
+    );
+};
+
+const CustomerDebtors = () => {
+    const [customerDebtors, setCustomerDebtors] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [order, setOrder] = useState('desc');
+    const [orderBy, setOrderBy] = useState('total_debt_amount');
+
+    const handleRequestSort = (event, property) => {
+        const isAsc = orderBy === property && order === 'asc';
+        setOrder(isAsc ? 'desc' : 'asc');
+        setOrderBy(property);
+    };
+
+    useEffect(() => {
+        fetchCustomerDebtors();
+    }, []);
+
+    const fetchCustomerDebtors = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await apiClient.get('/reportes/clientes_deudores');
+            setCustomerDebtors(response.data);
+        } catch (err) {
+            console.error('Error fetching customer debtors:', err);
+            setError('No se pudo cargar el reporte de clientes deudores.');
+            toast.error('Error al cargar el reporte de clientes deudores.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const sortedCustomerDebtors = useMemo(() =>
+        stableSort(customerDebtors, getComparator(order, orderBy)),
+        [customerDebtors, order, orderBy]
+    );
+
+    return (
+        <Box>
+            <Typography variant="h5" gutterBottom color="text.primary">Reporte de Clientes Deudores</Typography>
+
+            {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
+                    <CircularProgress />
+                </Box>
+            ) : error ? (
+                <Typography color="error">{error}</Typography>
+            ) : customerDebtors.length === 0 ? (
+                <Typography color="text.primary">No hay clientes con deudas pendientes.</Typography>
+            ) : (
+                <Box>
+                    <Box sx={{ maxWidth: '800px', margin: 'auto', mb: 3 }}>
+                        <Bar
+                            data={{
+                                labels: sortedCustomerDebtors.map(customer => customer.client_name),
+                                datasets: [
+                                    {
+                                        label: 'Monto Total Adeudado',
+                                        data: sortedCustomerDebtors.map(customer => customer.total_debt_amount),
+                                        backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                                        borderColor: 'rgba(255, 99, 132, 1)',
+                                        borderWidth: 1,
+                                    },
+                                ],
+                            }}
+                            options={{
+                                responsive: true,
+                                plugins: {
+                                    legend: { position: 'top' },
+                                    title: { display: true, text: 'Top Clientes por Monto Adeudado' },
+                                },
+                                scales: {
+                                    y: { beginAtZero: true },
+                                },
+                            }}
+                        />
+                    </Box>
+                    <Box sx={{ overflowX: 'auto' }}>
+                        <TableContainer component={Paper}>
+                            <Table sx={{ minWidth: 650 }}>
+                                <EnhancedTableHead
+                                    order={order}
+                                    orderBy={orderBy}
+                                    onRequestSort={handleRequestSort}
+                                />
+                                <TableBody>
+                                    {sortedCustomerDebtors.map((customer) => (
+                                        <TableRow key={customer.client_id}>
+                                            <TableCell><Typography color="text.primary">{customer.client_id}</Typography></TableCell>
+                                            <TableCell><Typography color="text.primary">{customer.client_name}</Typography></TableCell>
+                                            <TableCell align="right"><Typography color="text.primary">{formatCurrency(customer.total_debt_amount)}</Typography></TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </Box>
+                </Box>
+            )}
+        </Box>
+    );
+};
+
+export default CustomerDebtors;
