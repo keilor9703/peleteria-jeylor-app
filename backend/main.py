@@ -30,6 +30,8 @@ origins = [
    "https://golden-gumption-0edc3a.netlify.app/",
    "https://golden-gumption-0edc3a.netlify.app:8000",
    "https://frolicking-belekoy-f0e791.netlify.app:8000",
+   "https://peleteria-jeylor-app.vercel.app",
+   
 
 ]
 
