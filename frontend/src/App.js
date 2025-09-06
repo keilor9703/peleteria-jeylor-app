@@ -22,6 +22,8 @@ import ModuleManagement from './components/ModuleManagement';
 import OrdenesTrabajo from './components/OrdenesTrabajo';
 import Notifications from './components/Notifications';
 import PanelOperador from './components/PanelOperador';
+import { SpeedInsights } from "@vercel/speed-insights/react";
+
 
 
 const drawerWidth = 240;
@@ -343,7 +345,9 @@ function App() {
         )}
       </Box>
       <ToastContainer position="bottom-right" autoClose={3000} hideProgressBar={false} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover />
+    <SpeedInsights />
     </ThemeProvider>
+    
   );
 }
 

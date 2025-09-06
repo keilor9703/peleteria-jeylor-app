@@ -12,6 +12,7 @@ from database import SessionLocal, engine
 from models import Base
 
 
+
 models.Base.metadata.create_all(bind=engine)
 
 
