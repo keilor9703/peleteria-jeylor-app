@@ -6,10 +6,11 @@ from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from datetime import date, datetime, timedelta
 from jose import JWTError, jwt
-
+import psycopg2
 import crud, models, schemas
 from database import SessionLocal, engine
 from models import Base
+
 
 models.Base.metadata.create_all(bind=engine)
 
