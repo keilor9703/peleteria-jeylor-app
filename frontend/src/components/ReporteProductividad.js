@@ -3,8 +3,9 @@ import apiClient from '../api';
 import { formatCurrency } from '../utils/formatters';
 import { toast } from 'react-toastify';
 import {
-    Box, Paper, Typography, Grid, TextField, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Collapse, Card, CardContent
+    Box, Paper, Typography, Grid, TextField, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Collapse, Card, CardContent, useMediaQuery
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { KeyboardArrowDown, KeyboardArrowUp, AttachMoney, TrendingUp, People } from '@mui/icons-material';
 import { Bar } from 'react-chartjs-2';
 import {
@@ -26,11 +27,49 @@ ChartJS.register(
     Legend
 );
 
+// New component: ProductividadCard
+const ProductividadCard = ({ row, formatCurrency, handleOpenDetails, isMobile }) => {
+    const [open, setOpen] = useState(false); // Mover useState aquí
+    return (
+        <Card sx={{ mb: 2 }}>
+            <CardContent>
+                <Typography variant="h6" color="text.primary">{row.operador_username}</Typography>
+                <Typography color="textSecondary">Total Ganado: {formatCurrency(row.total_ganado)}</Typography>
+                {isMobile && (
+                    <IconButton size="small" onClick={() => setOpen(!open)}>
+                        {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
+                    </IconButton>
+                )}
+                <Collapse in={open} timeout="auto" unmountOnExit>
+                    <Box sx={{ margin: 1 }}>
+                        <Typography variant="h6" gutterBottom component="div">Desglose</Typography>
+                        {row.desglose.map((item, index) => (
+                            <ProductividadDetailCard key={index} item={item} formatCurrency={formatCurrency} />
+                        ))}
+                    </Box>
+                </Collapse>
+            </CardContent>
+        </Card>
+    );
+};
+
+// New component: ProductividadDetailCard
+const ProductividadDetailCard = ({ item, formatCurrency }) => (
+    <Card variant="outlined" sx={{ mb: 1, p: 1 }}>
+        <Typography variant="body2" color="text.primary">Orden ID: {item.orden_id}</Typography>
+        <Typography variant="body2" color="text.primary">Servicio: {item.servicio_nombre}</Typography>
+        <Typography variant="body2" color="text.primary">Valor Ganado: {formatCurrency(item.valor_ganado)}</Typography>
+    </Card>
+);
+
 const ReporteProductividad = () => {
     const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
     const [reportData, setReportData] = useState(null);
     const [loading, setLoading] = useState(false);
+
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     const handleGenerateReport = () => {
         setLoading(true);
@@ -131,24 +170,46 @@ const ReporteProductividad = () => {
                         <Collapse in={open} timeout="auto" unmountOnExit>
                             <Box sx={{ margin: 1 }}>
                                 <Typography variant="h6" gutterBottom component="div">Desglose</Typography>
-                                <Table size="small">
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell>Orden ID</TableCell>
-                                            <TableCell>Servicio</TableCell>
-                                            <TableCell align="right">Valor Ganado</TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
+                                {isMobile ? ( // Conditional rendering for nested table
+                                    <Box>
                                         {row.desglose.map((item, index) => (
-                                            <TableRow key={index}>
-                                                <TableCell>{item.orden_id}</TableCell>
-                                                <TableCell>{item.servicio_nombre}</TableCell>
-                                                <TableCell align="right">{formatCurrency(item.valor_ganado)}</TableCell>
-                                            </TableRow>
+                                            <ProductividadDetailCard key={index} item={item} formatCurrency={formatCurrency} />
                                         ))}
-                                    </TableBody>
-                                </Table>
+                                    </Box>
+                                ) : (
+                                    <TableContainer sx={{
+                                        backgroundColor: theme.palette.background.paper, // Asegurar el color de fondo del TableContainer
+                                        '&::-webkit-scrollbar': {
+                                            height: '8px',
+                                        },
+                                        '&::-webkit-scrollbar-thumb': {
+                                            backgroundColor: theme.palette.grey[700], // Color del scrollbar en modo oscuro
+                                            borderRadius: '4px',
+                                        },
+                                        '&::-webkit-scrollbar-track': {
+                                            backgroundColor: theme.palette.background.default, // Color del track del scrollbar
+                                        },
+                                    }}>
+                                        <Table size="small">
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell>Orden ID</TableCell>
+                                                <TableCell>Servicio</TableCell>
+                                                <TableCell align="right">Valor Ganado</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {row.desglose.map((item, index) => (
+                                                <TableRow key={index}>
+                                                    <TableCell>{item.orden_id}</TableCell>
+                                                    <TableCell>{item.servicio_nombre}</TableCell>
+                                                    <TableCell align="right">{formatCurrency(item.valor_ganado)}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                    </TableContainer> // <-- AÑADIDO
+                                )}
                             </Box>
                         </Collapse>
                     </TableCell>
@@ -225,20 +286,45 @@ const ReporteProductividad = () => {
                     <Grid item xs={12} md={4}>
                         <Paper elevation={3} sx={{ p: 2 }}>
                             <Typography variant="h6" mb={2} color="text.primary">Detalle por Operador</Typography>
-                            <TableContainer>
-                                <Table size="small">
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell />
-                                            <TableCell>Operador</TableCell>
-                                            <TableCell align="right">Total Ganado</TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {reportData.reporte.map(row => <Row key={row.operador_id} row={row} />)}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
+                            {isMobile ? (
+                                <Box>
+                                    {reportData.reporte.map(row => (
+                                        <ProductividadCard
+                                            key={row.operador_id}
+                                            row={row}
+                                            formatCurrency={formatCurrency}
+                                            isMobile={isMobile}
+                                        />
+                                    ))}
+                                </Box>
+                            ) : (
+                                <TableContainer sx={{
+                                    backgroundColor: theme.palette.background.paper, // Asegurar el color de fondo del TableContainer
+                                    '&::-webkit-scrollbar': {
+                                        height: '8px',
+                                    },
+                                    '&::-webkit-scrollbar-thumb': {
+                                        backgroundColor: theme.palette.grey[700], // Color del scrollbar en modo oscuro
+                                        borderRadius: '4px',
+                                    },
+                                    '&::-webkit-scrollbar-track': {
+                                        backgroundColor: theme.palette.background.default, // Color del track del scrollbar
+                                    },
+                                }}>
+                                    <Table size="small">
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell />
+                                                <TableCell>Operador</TableCell>
+                                                <TableCell align="right">Total Ganado</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {reportData.reporte.map(row => <Row key={row.operador_id} row={row} />)}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            )}
                         </Paper>
                     </Grid>
                 </Grid>

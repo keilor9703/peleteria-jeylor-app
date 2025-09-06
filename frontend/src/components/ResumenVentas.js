@@ -4,8 +4,9 @@ import { formatCurrency } from '../utils/formatters';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
 import {
-    Box, Paper, Typography, Grid, TextField, Button, Card, CardContent, CircularProgress
+    Box, Paper, Typography, Grid, TextField, Button, Card, CardContent, CircularProgress, useMediaQuery
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import {
     AttachMoney, Today, AccountBalanceWallet, CheckCircleOutline
 } from '@mui/icons-material';
@@ -29,6 +30,9 @@ const ResumenVentas = () => {
     const [loading, setLoading] = useState(true);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     useEffect(() => {
         fetchVentasSummary();

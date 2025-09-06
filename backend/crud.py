@@ -1,9 +1,11 @@
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
-from typing import Optional, List
+from typing import Optional, List, IO
 from datetime import date, timedelta, datetime
 from passlib.context import CryptContext
 import models, schemas
+import pandas as pd
+from fastapi import HTTPException
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -1107,3 +1109,79 @@ def get_historial_reciente_operador(db: Session, operador_id: int) -> List[schem
             estado_pago_venta=estado_pago
         ))
     return response
+
+def bulk_create_clientes(db: Session, file: IO, filename: str):
+    try:
+        file_extension = filename.split('.')[-1].lower()
+        if file_extension == 'xls':
+            df = pd.read_excel(file, engine='xlrd')
+        elif file_extension == 'xlsx':
+            df = pd.read_excel(file, engine='openpyxl')
+        elif file_extension == 'csv':
+            df = pd.read_csv(file)
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported file format: {file_extension}. Please upload a .xls, .xlsx, or .csv file.")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error processing file: {e}")
+
+    created_count = 0
+    errors = []
+
+    for index, row in df.iterrows():
+        try:
+            cliente_data = schemas.ClienteCreate(
+                nombre=row['nombre'],
+                cedula=str(row.get('cedula')) if pd.notna(row.get('cedula')) else None,
+                telefono=str(row.get('telefono')) if pd.notna(row.get('telefono')) else None,
+                direccion=row.get('direccion'),
+                cupo_credito=row.get('cupo_credito', 0.0)
+            )
+            create_cliente(db, cliente_data)
+            created_count += 1
+        except Exception as e:
+            errors.append(f"Error creating client in row {index + 2}: {e}")
+
+    return {
+        "success": True,
+        "message": f"Bulk client upload finished. {created_count} clients created." + (f" Errors: {errors}" if errors else ""),
+        "created_records": created_count,
+        "errors": errors
+    }
+
+def bulk_create_productos(db: Session, file: IO, filename: str):
+    try:
+        file_extension = filename.split('.')[-1].lower()
+        if file_extension == 'xls':
+            df = pd.read_excel(file, engine='xlrd')
+        elif file_extension == 'xlsx':
+            df = pd.read_excel(file, engine='openpyxl')
+        elif file_extension == 'csv':
+            df = pd.read_csv(file)
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported file format: {file_extension}. Please upload a .xls, .xlsx, or .csv file.")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error processing file: {e}")
+
+    created_count = 0
+    errors = []
+
+    for index, row in df.iterrows():
+        try:
+            producto_data = schemas.ProductoCreate(
+                nombre=row['nombre'],
+                precio=row['precio'],
+                costo=row.get('costo', 0.0),
+                es_servicio=row.get('es_servicio', False),
+                unidad_medida=row.get('unidad_medida', 'UND')
+            )
+            create_producto(db, producto_data)
+            created_count += 1
+        except Exception as e:
+            errors.append(f"Error creating product in row {index + 2}: {e}")
+
+    return {
+        "success": True,
+        "message": f"Bulk product upload finished. {created_count} products created.",
+        "created_records": created_count,
+        "errors": errors
+    }

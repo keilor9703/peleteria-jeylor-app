@@ -6,10 +6,27 @@ import { formatCurrency } from '../utils/formatters';
 import { toast } from 'react-toastify';
 import {
     Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    Paper, CircularProgress, TextField, Button, Grid
+    Paper, CircularProgress, TextField, Button, Grid, useMediaQuery, Card, CardContent
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+
+// New component: RentabilidadCard
+const RentabilidadCard = ({ item, formatCurrency }) => (
+    <Card sx={{ mb: 2 }}>
+        <CardContent>
+            <Typography variant="h6" color="text.primary">{item.product_name}</Typography>
+            <Typography color="textSecondary">Cantidad Vendida: {item.total_quantity_sold}</Typography>
+            <Typography color="textSecondary">Ingresos Totales: {formatCurrency(item.total_revenue)}</Typography>
+            <Typography color="textSecondary">Costo Total: {formatCurrency(item.total_cost)}</Typography>
+            <Typography color="text.primary" sx={{ fontWeight: 'bold', color: item.net_profit > 0 ? 'success.main' : 'error.main' }}>
+                Ganancia Neta: {formatCurrency(item.net_profit)}
+            </Typography>
+            <Typography color="text.primary">Margen: {item.profit_margin.toFixed(2)}%</Typography>
+        </CardContent>
+    </Card>
+);
 
 const RentabilidadReporte = () => {
     const [reportData, setReportData] = useState([]);
@@ -17,6 +34,9 @@ const RentabilidadReporte = () => {
     const [error, setError] = useState(null);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     useEffect(() => {
         fetchReportData();
@@ -116,34 +136,55 @@ const RentabilidadReporte = () => {
                             }}
                         />
                     </Box>
-                    <Box sx={{ overflowX: 'auto' }}>
-                        <TableContainer component={Paper}>
-                            <Table sx={{ minWidth: 800 }}>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Producto</TableCell>
-                                        <TableCell align="right">Cantidad Vendida</TableCell>
-                                        <TableCell align="right">Ingresos Totales</TableCell>
-                                        <TableCell align="right">Costo Total</TableCell>
-                                        <TableCell align="right">Ganancia Neta</TableCell>
-                                        <TableCell align="right">Margen</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {reportData.map((item) => (
-                                        <TableRow key={item.product_id}>
-                                            <TableCell><Typography color="text.primary">{item.product_name}</Typography></TableCell>
-                                            <TableCell align="right"><Typography color="text.primary">{item.total_quantity_sold}</Typography></TableCell>
-                                            <TableCell align="right"><Typography color="text.primary">{formatCurrency(item.total_revenue)}</Typography></TableCell>
-                                            <TableCell align="right"><Typography color="text.primary">{formatCurrency(item.total_cost)}</Typography></TableCell>
-                                            <TableCell align="right"><Typography color="text.primary" sx={{ fontWeight: 'bold', color: item.net_profit > 0 ? 'success.main' : 'error.main' }}>{formatCurrency(item.net_profit)}</Typography></TableCell>
-                                            <TableCell align="right"><Typography color="text.primary">{item.profit_margin.toFixed(2)}%</Typography></TableCell>
+                    {isMobile ? (
+                        <Box>
+                            {reportData.map(item => (
+                                <RentabilidadCard key={item.product_id} item={item} formatCurrency={formatCurrency} />
+                            ))}
+                        </Box>
+                    ) : (
+                        <Box sx={{
+                            overflowX: 'auto',
+                            backgroundColor: theme.palette.background.paper, // Asegurar el color de fondo del Box con overflow
+                            '&::-webkit-scrollbar': {
+                                height: '8px',
+                            },
+                            '&::-webkit-scrollbar-thumb': {
+                                backgroundColor: theme.palette.grey[700], // Color del scrollbar en modo oscuro
+                                borderRadius: '4px',
+                            },
+                            '&::-webkit-scrollbar-track': {
+                                backgroundColor: theme.palette.background.default, // Color del track del scrollbar
+                            },
+                        }}>
+                            <TableContainer component={Paper}>
+                                <Table sx={{ minWidth: 800 }}>
+                                    <TableHead>
+                                        <TableRow>
+                                            <TableCell>Producto</TableCell>
+                                            <TableCell align="right">Cantidad Vendida</TableCell>
+                                            <TableCell align="right">Ingresos Totales</TableCell>
+                                            <TableCell align="right">Costo Total</TableCell>
+                                            <TableCell align="right">Ganancia Neta</TableCell>
+                                            <TableCell align="right">Margen</TableCell>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    </Box>
+                                    </TableHead>
+                                    <TableBody>
+                                        {reportData.map((item) => (
+                                            <TableRow key={item.product_id}>
+                                                <TableCell><Typography color="text.primary">{item.product_name}</Typography></TableCell>
+                                                <TableCell align="right"><Typography color="text.primary">{item.total_quantity_sold}</Typography></TableCell>
+                                                <TableCell align="right"><Typography color="text.primary">{formatCurrency(item.total_revenue)}</Typography></TableCell>
+                                                <TableCell align="right"><Typography color="text.primary">{formatCurrency(item.total_cost)}</Typography></TableCell>
+                                                <TableCell align="right"><Typography color="text.primary" sx={{ fontWeight: 'bold', color: item.net_profit > 0 ? 'success.main' : 'error.main' }}>{formatCurrency(item.net_profit)}</Typography></TableCell>
+                                                <TableCell align="right"><Typography color="text.primary">{item.profit_margin.toFixed(2)}%</Typography></TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        </Box>
+                    )}
                 </Box>
             )}
         </Box>

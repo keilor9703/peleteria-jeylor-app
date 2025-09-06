@@ -1,5 +1,5 @@
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session, joinedload
@@ -31,7 +31,8 @@ origins = [
    "https://golden-gumption-0edc3a.netlify.app:8000",
    "https://frolicking-belekoy-f0e791.netlify.app:8000",
    "https://peleteria-jeylor-app.vercel.app",
-   
+   # Si estás probando desde un dispositivo móvil en tu red local, añade aquí la IP de tu dispositivo móvil y el puerto del frontend (normalmente 3000).
+   # Ejemplo: "http://192.168.1.X:3000", donde X es la IP de tu móvil.
 
 ]
 
@@ -48,7 +49,7 @@ app.add_middleware(
 # Configuración de seguridad para JWT
 SECRET_KEY = "a-very-secure-random-key-that-should-be-in-env-for-production-1234567890" # ¡CAMBIA ESTO EN PRODUCCIÓN! Considera usar variables de entorno.
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 120
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -243,6 +244,14 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: schem
 def create_cliente(cliente: schemas.ClienteCreate, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_active_user)):
     return crud.create_cliente(db=db, cliente=cliente)
 
+@app.post("/clientes/upload", response_model=schemas.BulkLoadResponse)
+def upload_clientes(
+    file: UploadFile = File(...), 
+    db: Session = Depends(get_db), 
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    return crud.bulk_create_clientes(db=db, file=file.file, filename=file.filename)
+
 @app.get("/clientes/", response_model=List[schemas.Cliente])
 def read_clientes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_active_user)):
     clientes = crud.get_clientes(db, skip=skip, limit=limit)
@@ -293,6 +302,14 @@ def get_cliente_history(cliente_id: int, db: Session = Depends(get_db), current_
 @app.post("/productos/", response_model=schemas.Producto)
 def create_producto(producto: schemas.ProductoCreate, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_active_user)):
     return crud.create_producto(db=db, producto=producto)
+
+@app.post("/productos/upload", response_model=schemas.BulkLoadResponse)
+def upload_productos(
+    file: UploadFile = File(...), 
+    db: Session = Depends(get_db), 
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    return crud.bulk_create_productos(db=db, file=file.file, filename=file.filename)
 
 @app.get("/productos/", response_model=List[schemas.Producto])
 def read_productos(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_active_user)):

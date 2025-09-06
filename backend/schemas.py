@@ -409,3 +409,23 @@ class PanelHistorialItem(BaseModel):
     class Config:
         from_attributes = True
 
+# Esquemas para Carga Masiva desde Excel
+class ProductoExcel(BaseModel):
+    nombre: str
+    precio: float
+    costo: float = 0.0
+    es_servicio: bool = False
+    unidad_medida: Optional[str] = "UND"
+
+class ClienteExcel(BaseModel):
+    nombre: str
+    cedula: Optional[str] = None
+    telefono: Optional[str] = None
+    direccion: Optional[str] = None
+    cupo_credito: Optional[float] = 0.0
+
+class BulkLoadResponse(BaseModel):
+    success: bool
+    message: str
+    created_records: int = 0
+    errors: List[str] = []

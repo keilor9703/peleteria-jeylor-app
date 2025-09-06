@@ -3,6 +3,7 @@ import ClienteList from './ClienteList';
 import ClienteForm from './ClienteForm';
 import ClienteAccountsReceivable from './ClienteAccountsReceivable'; // New import
 import { Box, Tabs, Tab, Typography } from '@mui/material'; // New imports for Tabs
+import BulkUpload from './BulkUpload';
 
 // Helper component for TabPanel
 function TabPanel(props) {
@@ -71,6 +72,7 @@ const Clientes = () => {
                 </Tabs>
             </Box>
             <TabPanel value={value} index={0}>
+                <BulkUpload uploadType="clientes" onUploadSuccess={handleClienteAdded} />
                 <ClienteForm
                     onClienteAdded={handleClienteAdded}
                     clienteToEdit={editingCliente}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import ProductoList from './ProductoList';
 import ProductoForm from './ProductoForm';
+import BulkUpload from './BulkUpload';
 
 const Productos = () => {
     const [key, setKey] = useState(0); // Used to trigger re-fetch in ProductoList
@@ -27,6 +28,7 @@ const Productos = () => {
 
     return (
         <div>
+            <BulkUpload uploadType="productos" onUploadSuccess={handleProductoAdded} />
             <ProductoForm 
                 onProductoAdded={handleProductoAdded} 
                 productoToEdit={editingProducto}

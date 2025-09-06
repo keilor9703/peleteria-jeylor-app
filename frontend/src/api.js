@@ -48,4 +48,22 @@ export const getPanelOperadorHistorial = () => {
   return apiClient.get('/panel_operador/historial');
 };
 
+export const uploadFile = async (uploadType, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const config = {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    };
+
+    try {
+        const response = await apiClient.post(`/${uploadType}/upload`, formData, config);
+        return response.data;
+    } catch (error) {
+        throw error.response.data;
+    }
+};
+
 export default apiClient;

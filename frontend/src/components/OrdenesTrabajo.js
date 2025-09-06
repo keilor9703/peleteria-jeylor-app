@@ -10,8 +10,9 @@ import { useLocation } from 'react-router-dom';
 import {
     Box, Paper, Typography, Grid, TextField, Button, IconButton, Autocomplete,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    Chip, Tabs, Tab, Tooltip, List, ListItem, ListItemText
+    Chip, Tabs, Tab, Tooltip, List, ListItem, ListItemText, useMediaQuery, Card, CardContent, CardActions
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { AddCircleOutline, RemoveCircleOutline, Edit, Delete, Visibility, Send, CheckCircle, Cancel } from '@mui/icons-material';
 import CloseOrderPaymentDialog from './CloseOrderPaymentDialog';
 
@@ -25,6 +26,81 @@ function TabPanel(props) {
     );
 }
 
+// New component: OrdenTrabajoCard
+const OrdenTrabajoCard = ({ orden, handleEdit, handleOpenDetails, getEstadoChip, handleEnviarRevision, user, handleCloseOrder, handleApprove, handleOpenRejectDialog }) => {
+    return (
+        <Card sx={{ mb: 2 }}>
+            <CardContent>
+                <Typography variant="h6" color="text.primary">Orden #{orden.id} - {orden.cliente?.nombre || 'N/A'}</Typography>
+                <Typography color="textSecondary">Operador: {orden.operador?.username || 'N/A'}</Typography>
+                <Typography color="textSecondary">Fecha: {new Date(orden.fecha_creacion + 'Z').toLocaleString()}</Typography>
+                <Box sx={{ my: 1 }}>
+                    {orden.productos && orden.productos.length > 0 && (
+                        <>
+                            <Typography variant="body2" color="text.primary" sx={{ fontWeight: 'bold' }}>Productos:</Typography>
+                            {orden.productos.map(p => (
+                                <Typography key={p.id} variant="body2" color="text.primary" sx={{ ml: 1 }}>
+                                    - {p.producto?.nombre} (x{p.cantidad})
+                                </Typography>
+                            ))}
+                        </>
+                    )}
+                    {orden.servicios && orden.servicios.length > 0 && (
+                        <>
+                            <Typography variant="body2" color="text.primary" sx={{ fontWeight: 'bold', mt: 1 }}>Servicios:</Typography>
+                            {orden.servicios.map(s => (
+                                <Typography key={s.id} variant="body2" color="text.primary" sx={{ ml: 1 }}>
+                                    - {s.servicio?.nombre} (x{s.cantidad})
+                                </Typography>
+                            ))}
+                        </>
+                    )}
+                </Box>
+                <Typography color="text.primary">Total: {formatCurrency(orden.total)}</Typography>
+                <Box sx={{ mt: 1 }}>
+                    {getEstadoChip(orden.estado)}
+                </Box>
+            </CardContent>
+            <CardActions>
+                <IconButton onClick={() => handleOpenDetails(orden)} color="info"><Visibility /></IconButton>
+                {(orden.estado === 'Borrador' || orden.estado === 'Rechazada' || orden.estado === 'En revisión') && (
+                    <>
+                        <IconButton onClick={() => handleEdit(orden)} color="primary"><Edit /></IconButton>
+                        {orden.estado !== 'En revisión' && <IconButton onClick={() => handleEnviarRevision(orden.id)} color="secondary"><Send /></IconButton>}
+                    </>
+                )}
+                {user?.role?.name === 'Admin' && (orden.estado === 'Aprobada' || orden.estado === 'Rechazada') && (
+                    <IconButton onClick={() => handleCloseOrder(orden)} color="primary"><CheckCircle /></IconButton>
+                )}
+                {user?.role?.name === 'Admin' && orden.estado === 'En revisión' && (
+                    <>
+                        <IconButton onClick={() => handleApprove(orden.id)} color="success"><CheckCircle /></IconButton>
+                        <IconButton onClick={() => handleOpenRejectDialog(orden)} color="error"><Cancel /></IconButton>
+                    </>
+                )}
+            </CardActions>
+        </Card>
+    );
+};
+
+// New component: OrdenAprobacionCard
+const OrdenAprobacionCard = ({ orden, handleOpenDetails, handleApprove, handleOpenRejectDialog }) => {
+    return (
+        <Card sx={{ mb: 2 }}>
+            <CardContent>
+                <Typography variant="h6" color="text.primary">Orden #{orden.id} - {orden.cliente?.nombre || 'N/A'}</Typography>
+                <Typography color="textSecondary">Operador: {orden.operador?.username || 'N/A'}</Typography>
+                <Typography color="textSecondary">Total: {formatCurrency(orden.total)}</Typography>
+                <Typography color="textSecondary">Fecha: {new Date(orden.fecha_creacion + 'Z').toLocaleString()}</Typography>
+            </CardContent>
+            <CardActions>
+                <IconButton onClick={() => handleOpenDetails(orden)} color="info"><Visibility /></IconButton>
+                <IconButton onClick={() => handleApprove(orden.id)} color="success"><CheckCircle /></IconButton>
+                <IconButton onClick={() => handleOpenRejectDialog(orden)} color="error"><Cancel /></IconButton>
+            </CardActions>
+        </Card>
+    );
+};
 
 const OrdenesTrabajo = ({ user }) => {
     const [ordenes, setOrdenes] = useState([]);
@@ -51,6 +127,8 @@ const OrdenesTrabajo = ({ user }) => {
 
     const [tabValue, setTabValue] = useState(0);
     const location = useLocation();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     const [startDate, setStartDate] = useState(new Date().toLocaleDateString('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-')); // Default to current day
     const [endDate, setEndDate] = useState(new Date().toLocaleDateString('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-'));     // Default to current day
@@ -458,7 +536,7 @@ const OrdenesTrabajo = ({ user }) => {
 
             {/* Tab para el Historial */}
             <TabPanel value={tabValue} index={1}>
-                <Paper sx={{ p: 3 }}>
+                <Paper sx={{ p: 3, backgroundColor: theme.palette.background.paper }}>
                     <Typography variant="h6" mb={2}>Mis Órdenes de Trabajo</Typography>
                     {/* Filter Section */}
                     <Grid container spacing={2} alignItems="center" mb={3}>
@@ -511,105 +589,162 @@ const OrdenesTrabajo = ({ user }) => {
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
                         <Typography variant="h6">Total Acumulado: {formatCurrency(accumulatedTotal)}</Typography>
                     </Box>
-                    <TableContainer>
-                        <Table>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>ID</TableCell>
-                                    <TableCell>Cliente</TableCell>
-                                    <TableCell>Operador</TableCell>
-                                    <TableCell>Productos</TableCell>
-                                    <TableCell>Servicios</TableCell>
-                                    <TableCell>Total</TableCell>
-                                    <TableCell>Estado</TableCell>
-                                    <TableCell>Fecha</TableCell>
-                                    <TableCell>Acciones</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {ordenes.map(orden => (
-                                    <TableRow key={orden.id}>
-                                        <TableCell>{orden.id}</TableCell>
-                                        <TableCell>{orden.cliente?.nombre}</TableCell>
-                                        <TableCell>{orden.operador?.username}</TableCell>
-                                        <TableCell>
-                                            <List dense disablePadding>
-                                                {orden.productos && orden.productos.length > 0 ? orden.productos.map(item => (
-                                                    <ListItem key={item.id} sx={{ pl: 0 }}>
-                                                        <ListItemText
-                                                            primary={`${item.producto.nombre} (x${item.cantidad})`}
-                                                        />
-                                                    </ListItem>
-                                                )) : <ListItemText primary="N/A" />}
-                                            </List>
-                                        </TableCell>
-                                        <TableCell>
-                                            <List dense disablePadding>
-                                                {orden.servicios && orden.servicios.length > 0 ? orden.servicios.map(item => (
-                                                    <ListItem key={item.id} sx={{ pl: 0 }}>
-                                                        <ListItemText
-                                                            primary={`${item.servicio.nombre} (x${item.cantidad})`}
-                                                        />
-                                                    </ListItem>
-                                                )) : <ListItemText primary="N/A" />}
-                                            </List>
-                                        </TableCell>
-                                        <TableCell>{formatCurrency(orden.total)}</TableCell>
-                                        <TableCell>{getEstadoChip(orden.estado)}</TableCell>
-                                        <TableCell>{new Date(orden.fecha_creacion + 'Z').toLocaleString()}</TableCell>
-                                        <TableCell>
-                                            <Tooltip title="Ver detalles de la orden"><IconButton color="info" onClick={() => handleOpenDetails(orden)}><Visibility /></IconButton></Tooltip>
-                                            {(orden.estado === 'Borrador' || orden.estado === 'Rechazada' || orden.estado === 'En revisión') && (
-                                                <>
-                                                    <Tooltip title="Editar orden"><IconButton color="primary" onClick={() => { setEditingOrden(orden); }}><Edit /></IconButton></Tooltip>
-                                                    {orden.estado !== 'En revisión' && <Tooltip title="Enviar a revisión"><IconButton color="secondary" onClick={() => handleEnviarRevision(orden.id)}><Send /></IconButton></Tooltip>}
-                                                </>
-                                            )}
-                                            {user?.role?.name === 'Admin' && (orden.estado === 'Aprobada' || orden.estado === 'Rechazada') && (
-                                                <Tooltip title="Cerrar orden"><IconButton color="primary" onClick={() => handleCloseOrder(orden)}><CheckCircle /></IconButton></Tooltip>
-                                            )}
-                                        </TableCell>
+                    {isMobile ? (
+                        <Box>
+                            {[...ordenes].reverse().map(orden => (
+                                <OrdenTrabajoCard
+                                    key={orden.id}
+                                    orden={orden}
+                                    handleEdit={() => { setEditingOrden(orden); setTabValue(0); }} // Set tab to 0 (Registrar Orden) for editing
+                                    handleOpenDetails={handleOpenDetails}
+                                    getEstadoChip={getEstadoChip}
+                                    handleEnviarRevision={handleEnviarRevision}
+                                    user={user}
+                                    handleCloseOrder={handleCloseOrder}
+                                    handleApprove={handleApprove}
+                                    handleOpenRejectDialog={handleOpenRejectDialog}
+                                />
+                            ))}
+                        </Box>
+                    ) : (
+                        <TableContainer sx={{
+                            backgroundColor: theme.palette.background.paper, // Asegurar el color de fondo del TableContainer
+                            '&::-webkit-scrollbar': {
+                                height: '8px',
+                            },
+                            '&::-webkit-scrollbar-thumb': {
+                                backgroundColor: theme.palette.grey[700], // Color del scrollbar en modo oscuro
+                                borderRadius: '4px',
+                            },
+                            '&::-webkit-scrollbar-track': {
+                                backgroundColor: theme.palette.background.default, // Color del track del scrollbar
+                            },
+                        }}>
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>ID</TableCell>
+                                        <TableCell>Cliente</TableCell>
+                                        <TableCell>Operador</TableCell>
+                                        <TableCell>Productos</TableCell>
+                                        <TableCell>Servicios</TableCell>
+                                        <TableCell>Total</TableCell>
+                                        <TableCell>Estado</TableCell>
+                                        <TableCell>Fecha</TableCell>
+                                        <TableCell>Acciones</TableCell>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
+                                </TableHead>
+                                <TableBody>
+                                    {[...ordenes].reverse().map(orden => (
+                                        <TableRow key={orden.id}>
+                                            <TableCell>{orden.id}</TableCell>
+                                            <TableCell>{orden.cliente?.nombre}</TableCell>
+                                            <TableCell>{orden.operador?.username}</TableCell>
+                                            <TableCell>
+                                                <List dense disablePadding>
+                                                    {orden.productos && orden.productos.length > 0 ? orden.productos.map(item => (
+                                                        <ListItem key={item.id} sx={{ pl: 0 }}>
+                                                            <ListItemText
+                                                                primary={`${item.producto.nombre} (x${item.cantidad})`}
+                                                            />
+                                                        </ListItem>
+                                                    )) : <ListItemText primary="N/A" />}
+                                                </List>
+                                            </TableCell>
+                                            <TableCell>
+                                                <List dense disablePadding>
+                                                    {orden.servicios && orden.servicios.length > 0 ? orden.servicios.map(item => (
+                                                        <ListItem key={item.id} sx={{ pl: 0 }}>
+                                                            <ListItemText
+                                                                primary={`${item.servicio.nombre} (x${item.cantidad})`}
+                                                            />
+                                                        </ListItem>
+                                                    )) : <ListItemText primary="N/A" />}
+                                                </List>
+                                            </TableCell>
+                                            <TableCell>{formatCurrency(orden.total)}</TableCell>
+                                            <TableCell>{getEstadoChip(orden.estado)}</TableCell>
+                                            <TableCell>{new Date(orden.fecha_creacion + 'Z').toLocaleString()}</TableCell>
+                                            <TableCell>
+                                                <Tooltip title="Ver detalles de la orden"><IconButton color="info" onClick={() => handleOpenDetails(orden)}><Visibility /></IconButton></Tooltip>
+                                                {(orden.estado === 'Borrador' || orden.estado === 'Rechazada' || orden.estado === 'En revisión') && (
+                                                    <>
+                                                        <Tooltip title="Editar orden"><IconButton color="primary" onClick={() => { setEditingOrden(orden); }}><Edit /></IconButton></Tooltip>
+                                                        {orden.estado !== 'En revisión' && <Tooltip title="Enviar a revisión"><IconButton color="secondary" onClick={() => handleEnviarRevision(orden.id)}><Send /></IconButton></Tooltip>}
+                                                    </>
+                                                )}
+                                                {user?.role?.name === 'Admin' && (orden.estado === 'Aprobada' || orden.estado === 'Rechazada') && (
+                                                    <Tooltip title="Cerrar orden"><IconButton color="primary" onClick={() => handleCloseOrder(orden)}><CheckCircle /></IconButton></Tooltip>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    )}
                 </Paper>
             </TabPanel>
 
             <TabPanel value={tabValue} index={2}>
-                <Paper sx={{ p: 3 }}>
+                <Paper sx={{ p: 3, backgroundColor: theme.palette.background.paper }}>
                     <Typography variant="h6" mb={2}>Órdenes Pendientes de Aprobación</Typography>
-                    <TableContainer>
-                        <Table>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>ID</TableCell>
-                                    <TableCell>Cliente</TableCell>
-                                    <TableCell>Operador</TableCell>
-                                    <TableCell>Total</TableCell>
-                                    <TableCell>Fecha</TableCell>
-                                    <TableCell>Acciones</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {ordenesParaAprobar.map(orden => (
-                                    <TableRow key={orden.id}>
-                                        <TableCell>{orden.id}</TableCell>
-                                        <TableCell>{orden.cliente?.nombre}</TableCell>
-                                        <TableCell>{orden.operador?.username}</TableCell>
-                                        <TableCell>{formatCurrency(orden.total)}</TableCell>
-                                        <TableCell>{new Date(orden.fecha_creacion + 'Z').toLocaleString()}</TableCell>
-                                        <TableCell>
-                                            <Tooltip title="Ver detalles de la orden"><IconButton color="info" onClick={() => handleOpenDetails(orden)}><Visibility /></IconButton></Tooltip>
-                                            <Tooltip title="Aprobar orden"><IconButton color="success" onClick={() => handleApprove(orden.id)}><CheckCircle /></IconButton></Tooltip>
-                                            <Tooltip title="Rechazar orden"><IconButton color="error" onClick={() => handleOpenRejectDialog(orden)}><Cancel /></IconButton></Tooltip>
-                                        </TableCell>
+                    {isMobile ? (
+                        <Box>
+                            {ordenesParaAprobar.map(orden => (
+                                <OrdenAprobacionCard
+                                    key={orden.id}
+                                    orden={orden}
+                                    handleOpenDetails={handleOpenDetails}
+                                    handleApprove={handleApprove}
+                                    handleOpenRejectDialog={handleOpenRejectDialog}
+                                />
+                            ))}
+                        </Box>
+                    ) : (
+                        <TableContainer sx={{
+                            backgroundColor: theme.palette.background.paper, // Asegurar el color de fondo del TableContainer
+                            '&::-webkit-scrollbar': {
+                                height: '8px',
+                            },
+                            '&::-webkit-scrollbar-thumb': {
+                                backgroundColor: theme.palette.grey[700], // Color del scrollbar en modo oscuro
+                                borderRadius: '4px',
+                            },
+                            '&::-webkit-scrollbar-track': {
+                                backgroundColor: theme.palette.background.default, // Color del track del scrollbar
+                            },
+                        }}>
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>ID</TableCell>
+                                        <TableCell>Cliente</TableCell>
+                                        <TableCell>Operador</TableCell>
+                                        <TableCell>Total</TableCell>
+                                        <TableCell>Fecha</TableCell>
+                                        <TableCell>Acciones</TableCell>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
+                                </TableHead>
+                                <TableBody>
+                                    {ordenesParaAprobar.map(orden => (
+                                        <TableRow key={orden.id}>
+                                            <TableCell>{orden.id}</TableCell>
+                                            <TableCell>{orden.cliente?.nombre}</TableCell>
+                                            <TableCell>{orden.operador?.username}</TableCell>
+                                            <TableCell>{formatCurrency(orden.total)}</TableCell>
+                                            <TableCell>{new Date(orden.fecha_creacion + 'Z').toLocaleString()}</TableCell>
+                                            <TableCell>
+                                                <Tooltip title="Ver detalles de la orden"><IconButton color="info" onClick={() => handleOpenDetails(orden)}><Visibility /></IconButton></Tooltip>
+                                                <Tooltip title="Aprobar orden"><IconButton color="success" onClick={() => handleApprove(orden.id)}><CheckCircle /></IconButton></Tooltip>
+                                                <Tooltip title="Rechazar orden"><IconButton color="error" onClick={() => handleOpenRejectDialog(orden)}><Cancel /></IconButton></Tooltip>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    )}
                 </Paper>
             </TabPanel>
 

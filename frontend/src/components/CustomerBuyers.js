@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
     Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    Paper, CircularProgress, TextField, Button, Grid, TableSortLabel
+    Paper, CircularProgress, TextField, Button, Grid, TableSortLabel, useMediaQuery, Card, CardContent
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import apiClient from '../api';
 import { formatCurrency } from '../utils/formatters';
 import { toast } from 'react-toastify';
@@ -11,6 +12,17 @@ import { Bar } from 'react-chartjs-2';
 import { visuallyHidden, stableSort, getComparator } from '../utils/sortingUtils';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+
+// New component: CustomerBuyerCard
+const CustomerBuyerCard = ({ customer, formatCurrency }) => (
+    <Card sx={{ mb: 2 }}>
+        <CardContent>
+            <Typography variant="h6" color="text.primary">{customer.client_name}</Typography>
+            <Typography color="textSecondary">ID Cliente: {customer.client_id}</Typography>
+            <Typography color="textSecondary">Monto Total Comprado: {formatCurrency(customer.total_purchase_amount)}</Typography>
+        </CardContent>
+    </Card>
+);
 
 const headCells = [
     { id: 'client_id', numeric: false, disablePadding: false, label: 'ID Cliente' },
@@ -61,6 +73,9 @@ const CustomerBuyers = () => {
     const [endDate, setEndDate] = useState('');
     const [order, setOrder] = useState('desc');
     const [orderBy, setOrderBy] = useState('total_purchase_amount');
+
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     const handleRequestSort = (event, property) => {
         const isAsc = orderBy === property && order === 'asc';
@@ -171,26 +186,47 @@ const CustomerBuyers = () => {
                             }}
                         />
                     </Box>
-                    <Box sx={{ overflowX: 'auto' }}>
-                        <TableContainer component={Paper}>
-                            <Table sx={{ minWidth: 650 }}>
-                                <EnhancedTableHead
-                                    order={order}
-                                    orderBy={orderBy}
-                                    onRequestSort={handleRequestSort}
-                                />
-                                <TableBody>
-                                    {sortedCustomerBuyers.map((customer) => (
-                                        <TableRow key={customer.client_id}>
-                                            <TableCell><Typography color="text.primary">{customer.client_id}</Typography></TableCell>
-                                            <TableCell><Typography color="text.primary">{customer.client_name}</Typography></TableCell>
-                                            <TableCell align="right"><Typography color="text.primary">{formatCurrency(customer.total_purchase_amount)}</Typography></TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    </Box>
+                    {isMobile ? (
+                        <Box>
+                            {sortedCustomerBuyers.map(customer => (
+                                <CustomerBuyerCard key={customer.client_id} customer={customer} formatCurrency={formatCurrency} />
+                            ))}
+                        </Box>
+                    ) : (
+                        <Box sx={{
+                            overflowX: 'auto',
+                            backgroundColor: theme.palette.background.paper, // Asegurar el color de fondo del Box con overflow
+                            '&::-webkit-scrollbar': {
+                                height: '8px',
+                            },
+                            '&::-webkit-scrollbar-thumb': {
+                                backgroundColor: theme.palette.grey[700], // Color del scrollbar en modo oscuro
+                                borderRadius: '4px',
+                            },
+                            '&::-webkit-scrollbar-track': {
+                                backgroundColor: theme.palette.background.default, // Color del track del scrollbar
+                            },
+                        }}>
+                            <TableContainer component={Paper}>
+                                <Table sx={{ minWidth: 650 }}>
+                                    <EnhancedTableHead
+                                        order={order}
+                                        orderBy={orderBy}
+                                        onRequestSort={handleRequestSort}
+                                    />
+                                    <TableBody>
+                                        {sortedCustomerBuyers.map((customer) => (
+                                            <TableRow key={customer.client_id}>
+                                                <TableCell><Typography color="text.primary">{customer.client_id}</Typography></TableCell>
+                                                <TableCell><Typography color="text.primary">{customer.client_name}</Typography></TableCell>
+                                                <TableCell align="right"><Typography color="text.primary">{formatCurrency(customer.total_purchase_amount)}</Typography></TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        </Box>
+                    )}
                 </Box>
             )}
         </Box>

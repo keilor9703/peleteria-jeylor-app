@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
     Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    Paper, CircularProgress, TextField, Button, Grid, TableSortLabel
+    Paper, CircularProgress, TextField, Button, Grid, TableSortLabel, useMediaQuery, Card, CardContent
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { visuallyHidden, stableSort, getComparator } from '../utils/sortingUtils';
 import apiClient from '../api';
 import { toast } from 'react-toastify';
@@ -12,6 +13,18 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Toolti
 import { Bar } from 'react-chartjs-2';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+
+// New component: ProductSalesCard
+const ProductSalesCard = ({ item, formatCurrency }) => (
+    <Card sx={{ mb: 2 }}>
+        <CardContent>
+            <Typography variant="h6" color="text.primary">{item.product_name}</Typography>
+            <Typography color="textSecondary">ID: {item.product_id}</Typography>
+            <Typography color="textSecondary">Cantidad Vendida: {item.total_quantity_sold}</Typography>
+            <Typography color="textSecondary">Total Vendido: {formatCurrency(item.total_revenue)}</Typography>
+        </CardContent>
+    </Card>
+);
 
 const headCells = [
     { id: 'product_id', numeric: false, disablePadding: false, label: 'ID' },
@@ -55,7 +68,7 @@ const EnhancedTableHead = (props) => {
     );
 };
 
-const SalesTable = ({ title, data, order, orderBy, onRequestSort }) => (
+const SalesTable = ({ title, data, order, orderBy, onRequestSort, isMobile, theme }) => (
     <Box sx={{ mb: 4 }}>
         <Typography variant="h6" gutterBottom color="text.primary">{title}</Typography>
         {data.length === 0 ? (
@@ -94,27 +107,48 @@ const SalesTable = ({ title, data, order, orderBy, onRequestSort }) => (
                         }}
                     />
                 </Box>
-                <Box sx={{ overflowX: 'auto' }}>
-                    <TableContainer component={Paper}>
-                        <Table sx={{ minWidth: 650 }}>
-                            <EnhancedTableHead
-                                order={order}
-                                orderBy={orderBy}
-                                onRequestSort={onRequestSort}
-                            />
-                            <TableBody>
-                                {data.map((item) => (
-                                    <TableRow key={item.product_id}>
-                                        <TableCell><Typography color="text.primary">{item.product_id}</Typography></TableCell>
-                                        <TableCell><Typography color="text.primary">{item.product_name}</Typography></TableCell>
-                                        <TableCell align="right"><Typography color="text.primary">{item.total_quantity_sold}</Typography></TableCell>
-                                        <TableCell align="right"><Typography color="text.primary">{formatCurrency(item.total_revenue)}</Typography></TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-                </Box>
+                {isMobile ? ( // Conditional rendering
+                    <Box>
+                        {data.map(item => (
+                            <ProductSalesCard key={item.product_id} item={item} formatCurrency={formatCurrency} />
+                        ))}
+                    </Box>
+                ) : (
+                    <Box sx={{
+                        overflowX: 'auto',
+                        backgroundColor: theme.palette.background.paper, // Asegurar el color de fondo del Box con overflow
+                        '&::-webkit-scrollbar': {
+                            height: '8px',
+                        },
+                        '&::-webkit-scrollbar-thumb': {
+                            backgroundColor: theme.palette.grey[700], // Color del scrollbar en modo oscuro
+                            borderRadius: '4px',
+                        },
+                        '&::-webkit-scrollbar-track': {
+                            backgroundColor: theme.palette.background.default, // Color del track del scrollbar
+                        },
+                    }}>
+                        <TableContainer component={Paper}>
+                            <Table sx={{ minWidth: 650 }}>
+                                <EnhancedTableHead
+                                    order={order}
+                                    orderBy={orderBy}
+                                    onRequestSort={onRequestSort}
+                                />
+                                <TableBody>
+                                    {data.map((item) => (
+                                        <TableRow key={item.product_id}>
+                                            <TableCell><Typography color="text.primary">{item.product_id}</Typography></TableCell>
+                                            <TableCell><Typography color="text.primary">{item.product_name}</Typography></TableCell>
+                                            <TableCell align="right"><Typography color="text.primary">{item.total_quantity_sold}</Typography></TableCell>
+                                            <TableCell align="right"><Typography color="text.primary">{formatCurrency(item.total_revenue)}</Typography></TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </Box>
+                )}
             </Box>
         )}
     </Box>
@@ -128,6 +162,9 @@ const ProductSales = () => {
     const [endDate, setEndDate] = useState('');
     const [order, setOrder] = useState('desc');
     const [orderBy, setOrderBy] = useState('total_revenue');
+
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     const handleRequestSort = (event, property) => {
         const isAsc = orderBy === property && order === 'asc';
@@ -221,6 +258,8 @@ const ProductSales = () => {
                         order={order}
                         orderBy={orderBy}
                         onRequestSort={handleRequestSort}
+                        isMobile={isMobile}
+                        theme={theme}
                     />
                     <SalesTable 
                         title="Servicios Prestados" 
@@ -228,6 +267,8 @@ const ProductSales = () => {
                         order={order}
                         orderBy={orderBy}
                         onRequestSort={handleRequestSort}
+                        isMobile={isMobile}
+                        theme={theme}
                     />
                 </Box>
             )}
