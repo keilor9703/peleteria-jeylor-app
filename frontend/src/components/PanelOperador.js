@@ -3,7 +3,8 @@ import { getPanelOperadorPendientes, getPanelOperadorProductividad, getPanelOper
 import { 
     Box, Typography, Grid, Card, CardContent, CircularProgress, Alert, 
     List, ListItem, ListItemText, Divider, Chip, Tabs, Tab, 
-    TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper 
+    TableContainer, Table, TableBody, TableCell, TableHead, TableRow, Paper, 
+    useMediaQuery, useTheme 
 } from '@mui/material';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
@@ -59,6 +60,45 @@ function a11yProps(index) {
     };
 }
 
+const OrdenTrabajoCard = ({ orden }) => (
+    <Card sx={{ mb: 2 }}>
+        <CardContent>
+            <Typography variant="h6" color="text.primary">Orden #{orden.id} - {orden.cliente_nombre}</Typography>
+            <Typography color="textSecondary">Fecha Creación: {new Date(orden.fecha_creacion + 'Z').toLocaleString('es-CO', { timeZone: 'America/Bogota' })}</Typography>
+            <Box sx={{ my: 1 }}>
+                <Typography variant="body2" color="text.primary">Estado: <Chip label={orden.estado} color={orden.estado === 'Aprobada' ? 'primary' : 'warning'} size="small" /></Typography>
+                <Typography variant="body2" color="text.primary">Total: ${orden.total.toLocaleString()}</Typography>
+                {orden.productos && orden.productos.length > 0 && (
+                    <Typography variant="body2" color="text.primary">Productos:</Typography>
+                )}
+                <List dense disablePadding>
+                    {orden.productos && orden.productos.length > 0 ? orden.productos.map(item => (
+                        <ListItem key={item.id} sx={{ pl: 0 }}>
+                            <ListItemText
+                                primary={`${item.producto.nombre} (x${item.cantidad})`}
+                                secondary={`${item.precio_unitario.toLocaleString()}`}
+                            />
+                        </ListItem>
+                    )) : null}
+                </List>
+                {orden.servicios && orden.servicios.length > 0 && (
+                    <Typography variant="body2" color="text.primary">Servicios:</Typography>
+                )}
+                <List dense disablePadding>
+                    {orden.servicios && orden.servicios.length > 0 ? orden.servicios.map(item => (
+                        <ListItem key={item.id} sx={{ pl: 0 }}>
+                            <ListItemText
+                                primary={`${item.servicio.nombre} (x${item.cantidad})`}
+                                secondary={`${item.precio_servicio.toLocaleString()}`}
+                            />
+                        </ListItem>
+                    )) : null}
+                </List>
+            </Box>
+        </CardContent>
+    </Card>
+);
+
 const PanelOperador = () => {
     const [pendientes, setPendientes] = useState([]);
     const [productividad, setProductividad] = useState(null);
@@ -66,6 +106,9 @@ const PanelOperador = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [currentTab, setCurrentTab] = useState(0); // State for active tab
+
+    const theme = useTheme(); // Add this
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // Add this
 
     // Effect to fetch data on component mount
     useEffect(() => {
@@ -123,75 +166,85 @@ const PanelOperador = () => {
             </Box>
 
             <TabPanel value={currentTab} index={0}>
-                <Card elevation={3}>
+                <Card elevation={3} sx={{ backgroundColor: 'background.paper' }}>
                     <CardContent>
                         <Typography variant="h5" gutterBottom>Órdenes de Trabajo Pendientes</Typography>
-                        <TableContainer component={Paper} sx={{ overflowX: 'auto', backgroundColor: 'background.paper' }}>
-                            <Table sx={{ minWidth: 650 }} aria-label="órdenes de trabajo pendientes">
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>ID Orden</TableCell>
-                                        <TableCell>Cliente</TableCell>
-                                        <TableCell>Contacto</TableCell>
-                                        <TableCell>Fecha Creación</TableCell>
-                                        <TableCell>Estado</TableCell>
-                                        <TableCell>Productos</TableCell>
-                                        <TableCell>Servicios</TableCell>
-                                        <TableCell align="right">Total</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {pendientes.length > 0 ? pendientes.map((orden) => (
-                                        <TableRow
-                                            key={orden.id}
-                                            sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                                        >
-                                            <TableCell component="th" scope="row">
-                                                {orden.id}
-                                            </TableCell>
-                                            <TableCell>{orden.cliente_nombre}</TableCell>
-                                            <TableCell>
-                                                <Typography variant="body2">Tel: {orden.cliente_telefono || 'N/A'}</Typography>
-                                                <Typography variant="body2">Dir: {orden.cliente_direccion || 'N/A'}</Typography>
-                                            </TableCell>
-                                            <TableCell>{new Date(orden.fecha_creacion + 'Z').toLocaleString('es-CO', { timeZone: 'America/Bogota' })}</TableCell>
-                                            <TableCell><Chip label={orden.estado} color={orden.estado === 'Aprobada' ? 'primary' : 'warning'} /></TableCell>
-                                            <TableCell>
-                                                <List dense disablePadding>
-                                                    {orden.productos && orden.productos.length > 0 ? orden.productos.map(item => (
-                                                        <ListItem key={item.id} sx={{ pl: 0 }}>
-                                                            <ListItemText
-                                                                primary={`${item.producto.nombre} (x${item.cantidad})`}
-                                                                secondary={`${item.precio_unitario.toLocaleString()}`}
-                                                            />
-                                                        </ListItem>
-                                                    )) : <ListItemText primary="N/A" />}
-                                                </List>
-                                            </TableCell>
-                                            <TableCell>
-                                                <List dense disablePadding>
-                                                    {orden.servicios && orden.servicios.length > 0 ? orden.servicios.map(item => (
-                                                        <ListItem key={item.id} sx={{ pl: 0 }}>
-                                                            <ListItemText
-                                                                primary={`${item.servicio.nombre} (x${item.cantidad})`}
-                                                                secondary={`${item.precio_servicio.toLocaleString()}`}
-                                                            />
-                                                        </ListItem>
-                                                    )) : <ListItemText primary="N/A" />}
-                                                </List>
-                                            </TableCell>
-                                            <TableCell align="right">${orden.total.toLocaleString()}</TableCell>
-                                        </TableRow>
-                                    )) : (
+                        {isMobile ? (
+                            <Box>
+                                {pendientes.length > 0 ? pendientes.map(orden => (
+                                    <OrdenTrabajoCard key={orden.id} orden={orden} />
+                                )) : (
+                                    <Typography align="center">No hay órdenes pendientes.</Typography>
+                                )}
+                            </Box>
+                        ) : (
+                            <TableContainer component={Paper} sx={{ overflowX: 'auto', backgroundColor: 'background.paper' }}>
+                                <Table aria-label="órdenes de trabajo pendientes">
+                                    <TableHead>
                                         <TableRow>
-                                            <TableCell colSpan={8} align="center">
-                                                No hay órdenes pendientes.
-                                            </TableCell>
+                                            <TableCell>ID Orden</TableCell>
+                                            <TableCell>Cliente</TableCell>
+                                            <TableCell>Contacto</TableCell>
+                                            <TableCell>Fecha Creación</TableCell>
+                                            <TableCell>Estado</TableCell>
+                                            <TableCell>Productos</TableCell>
+                                            <TableCell>Servicios</TableCell>
+                                            <TableCell align="right">Total</TableCell>
                                         </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
+                                    </TableHead>
+                                    <TableBody>
+                                        {pendientes.length > 0 ? pendientes.map((orden) => (
+                                            <TableRow
+                                                key={orden.id}
+                                                sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                                            >
+                                                <TableCell component="th" scope="row">
+                                                    {orden.id}
+                                                </TableCell>
+                                                <TableCell>{orden.cliente_nombre}</TableCell>
+                                                <TableCell>
+                                                    <Typography variant="body2">Tel: {orden.cliente_telefono || 'N/A'}</Typography>
+                                                    <Typography variant="body2">Dir: {orden.cliente_direccion || 'N/A'}</Typography>
+                                                </TableCell>
+                                                <TableCell>{new Date(orden.fecha_creacion + 'Z').toLocaleString('es-CO', { timeZone: 'America/Bogota' })}</TableCell>
+                                                <TableCell><Chip label={orden.estado} color={orden.estado === 'Aprobada' ? 'primary' : 'warning'} /></TableCell>
+                                                <TableCell>
+                                                    <List dense disablePadding>
+                                                        {orden.productos && orden.productos.length > 0 ? orden.productos.map(item => (
+                                                            <ListItem key={item.id} sx={{ pl: 0 }}>
+                                                                <ListItemText
+                                                                    primary={`${item.producto.nombre} (x${item.cantidad})`}
+                                                                    secondary={`${item.precio_unitario.toLocaleString()}`}
+                                                                />
+                                                            </ListItem>
+                                                        )) : <ListItemText primary="N/A" />}
+                                                    </List>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <List dense disablePadding>
+                                                        {orden.servicios && orden.servicios.length > 0 ? orden.servicios.map(item => (
+                                                            <ListItem key={item.id} sx={{ pl: 0 }}>
+                                                                <ListItemText
+                                                                    primary={`${item.servicio.nombre} (x${item.cantidad})`}
+                                                                    secondary={`${item.precio_servicio.toLocaleString()}`}
+                                                                />
+                                                            </ListItem>
+                                                        )) : <ListItemText primary="N/A" />}
+                                                    </List>
+                                                </TableCell>
+                                                <TableCell align="right">${orden.total.toLocaleString()}</TableCell>
+                                            </TableRow>
+                                        )) : (
+                                            <TableRow>
+                                                <TableCell colSpan={8} align="center">
+                                                    No hay órdenes pendientes.
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        )}
                     </CardContent>
                 </Card>
             </TabPanel>
