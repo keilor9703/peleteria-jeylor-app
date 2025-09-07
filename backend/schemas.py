@@ -191,7 +191,7 @@ class ClienteHistory(BaseModel):
 class ProductoVendido(BaseModel):
     product_id: int
     product_name: str
-    total_quantity_sold: int
+    total_quantity_sold: float
     es_servicio: bool # Añadir para poder filtrar en el frontend
     total_revenue: float
 
@@ -221,7 +221,7 @@ class ClienteDeudor(BaseModel):
 class ProductoRentabilidad(BaseModel):
     product_id: int
     product_name: str
-    total_quantity_sold: int
+    total_quantity_sold: float
     total_revenue: float
     total_cost: float
     net_profit: float
