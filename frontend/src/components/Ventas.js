@@ -49,6 +49,8 @@ const VentaCard = ({ venta, handleEdit, handleDelete, handleOpenDetails, getEsta
             </Box>
             <Typography color="text.primary">Total: {formatCurrency(venta.total)}</Typography>
             <Typography color="text.primary">Pagado: {formatCurrency(venta.monto_pagado)}</Typography>
+            <Typography color="text.primary">Saldo: {formatCurrency(venta.total - venta.monto_pagado)}</Typography>
+
             <Box sx={{ mt: 1 }}>
                 {getEstadoPagoChip(venta.estado_pago)}
             </Box>
@@ -370,6 +372,7 @@ const Ventas = () => {
                                         <TableCell>Productos</TableCell>
                                         <TableCell>Total</TableCell>
                                         <TableCell>Pagado</TableCell>
+                                        <TableCell>Saldo</TableCell>
                                         <TableCell>Estado</TableCell>
                                         <TableCell>Fecha</TableCell>
                                         <TableCell>Acciones</TableCell>
@@ -387,6 +390,7 @@ const Ventas = () => {
                                             </TableCell>
                                             <TableCell>{formatCurrency(venta.total)}</TableCell>
                                             <TableCell>{formatCurrency(venta.monto_pagado)}</TableCell>
+                                            <TableCell>{formatCurrency(venta.total - venta.monto_pagado)}</TableCell>
                                             <TableCell>{getEstadoPagoChip(venta.estado_pago)}</TableCell>
                                             <TableCell>{new Date(venta.fecha + 'Z').toLocaleString()}</TableCell>
                                             <TableCell>

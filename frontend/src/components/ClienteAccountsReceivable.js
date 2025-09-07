@@ -87,40 +87,53 @@ const ClienteAccountsReceivable = () => {
                                             <TableCell>Fecha</TableCell>
                                             <TableCell>Productos</TableCell>
                                             <TableCell>Total</TableCell>
-                                            <TableCell>Pagado</TableCell>
+                                            <TableCell>Saldo</TableCell>
                                             <TableCell>Estado</TableCell>
-                                            <TableCell>Pagos</TableCell>
+                                            <TableCell>Pagos</TableCell> {/* <-- el encabezado general */}
                                             <TableCell>Acciones</TableCell>
                                         </TableRow>
-                                    </TableHead>
+                                    </TableHead>    
                                     <TableBody>
-                                        {cuenta.ventas_pendientes.map(venta => (
-                                            <TableRow key={venta.id}>
-                                                <TableCell>{new Date(venta.fecha).toLocaleDateString()}</TableCell>
-                                                <TableCell>
-                                                    {venta.detalles.map(d => <div key={d.id}>{d.producto?.nombre} (x{d.cantidad})</div>)}
-                                                </TableCell>
-                                                <TableCell>{formatCurrency(venta.total)}</TableCell>
-                                                <TableCell>{formatCurrency(venta.monto_pagado)}</TableCell>
-                                                <TableCell>{getEstadoPagoChip(venta.estado_pago)}</TableCell>
-                                                <TableCell>
-                                                    {venta.pagos.map(p => (
-                                                        <Box key={p.id} sx={{ display: 'flex', alignItems: 'center' }}>
-                                                            <Typography variant="body2" color="text.primary">{formatCurrency(p.monto)} ({new Date(p.fecha + 'Z').toLocaleString()})</Typography>
-                                                            <IconButton size="small" onClick={() => handleShowPaymentDialog(venta, p)}><Edit /></IconButton>
-                                                        </Box>
-                                                    ))}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {venta.estado_pago !== 'pagado' && (
-                                                        <>
-                                                            <IconButton onClick={() => handleShowPaymentDialog(venta)} color="primary"><Payment /></IconButton>
-                                                            <IconButton onClick={() => handleTotalPayment(venta)} color="success"><AttachMoney /></IconButton>
-                                                        </>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
+                                    {cuenta.ventas_pendientes.map(venta => {
+                                        const totalPagos = venta.pagos.reduce((acc, p) => acc + p.monto, 0); // 👈 suma pagos
+
+                                        return (
+                                        <TableRow key={venta.id}>
+                                            <TableCell>{new Date(venta.fecha).toLocaleDateString()}</TableCell>
+                                            <TableCell>
+                                            {venta.detalles.map(d => (
+                                                <div key={d.id}>{d.producto?.nombre} (x{d.cantidad})</div>
+                                            ))}
+                                            </TableCell>
+                                            <TableCell>{formatCurrency(venta.total)}</TableCell>
+                                            <TableCell>{formatCurrency(venta.total - venta.monto_pagado)}</TableCell>
+                                            <TableCell>{getEstadoPagoChip(venta.estado_pago)}</TableCell>
+                                            <TableCell>
+                                            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                                                Total - {formatCurrency(totalPagos)} {/* 👈 aquí va la suma */}
+                                            </Typography>
+                                            {venta.pagos.map(p => (
+                                                <Box key={p.id} sx={{ display: 'flex', alignItems: 'center' }}>
+                                                <Typography variant="body2" color="text.primary">
+                                                    {formatCurrency(p.monto)} ({new Date(p.fecha + 'Z').toLocaleString()})
+                                                </Typography>
+                                                <IconButton size="small" onClick={() => handleShowPaymentDialog(venta, p)}>
+                                                    <Edit />
+                                                </IconButton>
+                                                </Box>
+                                            ))}
+                                            </TableCell>
+                                            <TableCell>
+                                            {venta.estado_pago !== 'pagado' && (
+                                                <>
+                                                <IconButton onClick={() => handleShowPaymentDialog(venta)} color="primary"><Payment /></IconButton>
+                                                <IconButton onClick={() => handleTotalPayment(venta)} color="success"><AttachMoney /></IconButton>
+                                                </>
+                                            )}
+                                            </TableCell>
+                                        </TableRow>
+                                        );
+                                    })}
                                     </TableBody>
                                 </Table>
                             </TableContainer>

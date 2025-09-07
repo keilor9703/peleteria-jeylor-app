@@ -1,0 +1,36 @@
+{
+    // Archivo de configuración de depuración
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "Python: FastAPI",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "main:app",
+                "--host", "0.0.0.0",
+                "--port", "8000",
+                "--reload" // Úsalo solo en desarrollo
+            ],
+            "cwd": "${workspaceFolder}/backend", // Directorio donde está tu backend
+            "jinja": true,
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/backend"
+            }
+        },
+        {
+            "name": "Launch React App",
+            "type": "chrome", // O usa "msedge" si prefieres Edge
+            "request": "launch",
+            "url": "http://localhost:3000", // Cambia a 5173 si usas Vite
+            "webRoot": "${workspaceFolder}/frontend/src",
+            "sourceMaps": true,
+            "runtimeArgs": [
+                "--remote-debugging-port=9222"
+            ]
+        }
+    ]
+}
