@@ -343,8 +343,8 @@ const Ventas = () => {
                                 }}
                                 sx={{ mr: 2 }}
                             >
-                                <ToggleButton value="pagada" color="success">💰 Pagada</ToggleButton>
-                                <ToggleButton value="pendiente" color="error">🕒 Pendiente</ToggleButton>
+                                <ToggleButton value="pagada" color="success">💰 Efectivo</ToggleButton>
+                                <ToggleButton value="pendiente" color="error">🕒 X Cobrar</ToggleButton>
                             </ToggleButtonGroup>
 
                             <Button type="submit" variant="contained">

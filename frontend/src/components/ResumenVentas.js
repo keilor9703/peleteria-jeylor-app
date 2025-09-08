@@ -21,11 +21,10 @@ const StatCard = ({ title, value, icon, color, isMobile }) => (
             flexDirection: isMobile ? 'column' : 'row',
             alignItems: isMobile ? 'flex-start' : 'center',
             p: 2,
-            height: '100%',
-            width: isMobile ? '90%' : '100%',   // ancho compacto en mobile
-            mx: isMobile ? 'auto' : 0,          // centrado en mobile
+            width: '100%',
             borderRadius: 2,
-            boxShadow: isMobile ? 1 : 3         // sombra reducida en mobile
+            boxShadow: isMobile ? 1 : 3,
+            flexGrow: 1 // hace que todas crezcan igual
         }}
     >
         <Box sx={{ mb: isMobile ? 1 : 0, mr: isMobile ? 0 : 2, color: color }}>
@@ -105,7 +104,9 @@ const ResumenVentas = () => {
                         if (context.parsed !== null) {
                             label += formatCurrency(context.parsed);
                         }
-                        return label;
+                        const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+                        const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(2) : 0;
+                        return label + ` (${percentage}%)`;
                     }
                 }
             }
@@ -119,7 +120,6 @@ const ResumenVentas = () => {
                 <Typography variant="h6" gutterBottom>Filtrar por Fecha</Typography>
 
                 {isMobile ? (
-                    // 📱 Vista móvil → filtros apilados
                     <Stack spacing={2}>
                         <TextField
                             label="Fecha Inicio"
@@ -145,7 +145,6 @@ const ResumenVentas = () => {
                         </Button>
                     </Stack>
                 ) : (
-                    // 💻 Vista desktop → grid en fila
                     <Grid container spacing={2} alignItems="center">
                         <Grid item xs={12} sm={5}>
                             <TextField
@@ -186,7 +185,6 @@ const ResumenVentas = () => {
                 </Box>
             ) : ventasSummary ? (
                 isMobile ? (
-                    // 📱 Vista móvil
                     <Stack spacing={2}>
                         <StatCard 
                             title="Total General" 
@@ -225,25 +223,24 @@ const ResumenVentas = () => {
                         </Paper>
                     </Stack>
                 ) : (
-                    // 💻 Vista desktop
                     <Grid container spacing={3}>
                         <Grid item xs={12} md={8}>
-                            <Paper sx={{ p: 2, height: '100%' }}>
-                                <Typography variant="h6" gutterBottom>Métricas Clave</Typography>
-                                <Grid container spacing={2}>
-                                    <Grid item xs={12} sm={6}>
-                                        <StatCard title="Total General" value={formatCurrency(ventasSummary.total_general)} icon={<AttachMoney fontSize="large" />} color="#fbc02d" isMobile={isMobile}/>
-                                    </Grid>
-                                    <Grid item xs={12} sm={6}>
-                                        <StatCard title="Ventas de Hoy" value={formatCurrency(ventasSummary.total_ventas_hoy)} icon={<Today fontSize="large" />} color="#66bb6a" isMobile={isMobile}/>
-                                    </Grid>
-                                    <Grid item xs={12} sm={6}>
-                                        <StatCard title="Total Pagado" value={formatCurrency(ventasSummary.total_pagado)} icon={<CheckCircleOutline fontSize="large" />} color="#42a5f5" isMobile={isMobile}/>
-                                    </Grid>
-                                    <Grid item xs={12} sm={6}>
-                                        <StatCard title="Total Pendiente" value={formatCurrency(ventasSummary.total_pendiente)} icon={<AccountBalanceWallet fontSize="large" />} color="#ef5350" isMobile={isMobile}/>
-                                    </Grid>
+                           <Paper sx={{ p: 2, height: '100%' }}>
+                            <Typography variant="h6" gutterBottom>Métricas Clave</Typography>
+                            <Grid container spacing={2} alignItems="stretch">
+                                <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex' }}>
+                                    <StatCard title="Total General" value={formatCurrency(ventasSummary.total_general)} icon={<AttachMoney fontSize="large" />} color="#fbc02d" isMobile={isMobile}/>
                                 </Grid>
+                                <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex' }}>
+                                    <StatCard title="Ventas de Hoy" value={formatCurrency(ventasSummary.total_ventas_hoy)} icon={<Today fontSize="large" />} color="#66bb6a" isMobile={isMobile}/>
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex' }}>
+                                    <StatCard title="Total Pagado" value={formatCurrency(ventasSummary.total_pagado)} icon={<CheckCircleOutline fontSize="large" />} color="#42a5f5" isMobile={isMobile}/>
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex' }}>
+                                    <StatCard title="Total Pendiente" value={formatCurrency(ventasSummary.total_pendiente)} icon={<AccountBalanceWallet fontSize="large" />} color="#ef5350" isMobile={isMobile}/>
+                                </Grid>
+                            </Grid>
                             </Paper>
                         </Grid>
                         <Grid item xs={12} md={4}>
