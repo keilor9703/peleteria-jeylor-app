@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api';
 import { toast } from 'react-toastify';
-import { Button, TextField, Box, Typography, Grid, FormControl, InputLabel, Select, MenuItem, Checkbox, FormControlLabel, InputAdornment } from '@mui/material';
+import { Button, TextField, Box, Typography, Grid, FormControl, InputLabel, Select, MenuItem, Checkbox, FormControlLabel, InputAdornment,
+    Accordion, AccordionSummary, AccordionDetails
+ } from '@mui/material';
+import { Edit, Delete, ExpandMore } from '@mui/icons-material';
+import BulkUpload from './BulkUpload'; // ✅ importamos el cargue masivo
 
 const ProductoForm = ({ onProductoAdded, productoToEdit, onProductoUpdated }) => {
     const [nombre, setNombre] = useState('');
@@ -9,6 +13,19 @@ const ProductoForm = ({ onProductoAdded, productoToEdit, onProductoUpdated }) =>
     const [costo, setCosto] = useState(''); // <-- Estado para costo
     const [esServicio, setEsServicio] = useState(false);
     const [unidadMedida, setUnidadMedida] = useState('UND');
+    const [productos, setProductos] = useState([]);
+
+      useEffect(() => {
+            fetchProductos();
+        }, []);
+    
+        const fetchProductos = () => {
+            apiClient.get('/productos/')
+                .then(response => {
+                    setProductos(response.data);
+                })
+                .catch(error => console.error('Error fetching productos:', error));
+        };
 
     useEffect(() => {
         if (productoToEdit) {
@@ -25,6 +42,13 @@ const ProductoForm = ({ onProductoAdded, productoToEdit, onProductoUpdated }) =>
             setUnidadMedida('UND');
         }
     }, [productoToEdit]);
+    
+     const accordionStyles = {
+    mt: 3,
+    borderRadius: 2,
+    boxShadow: 2,
+    '&:before': { display: 'none' } // 🔹 quita la línea fea por defecto
+    };
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -124,6 +148,36 @@ const ProductoForm = ({ onProductoAdded, productoToEdit, onProductoUpdated }) =>
                     </Button>
                 </Grid>
             </Grid>
+
+            <Accordion
+                sx={{
+                    mt: 3,
+                    mb: 2,
+                    borderRadius: 2,
+                    boxShadow: 2,
+                    overflow: 'hidden', // asegura bordes uniformes
+                    '&:before': { display: 'none' }
+                }}
+                >
+                <AccordionSummary
+                    expandIcon={<ExpandMore />}
+                    sx={{
+                    backgroundColor: '#f5f5f5',
+                    borderBottom: '1px solid #ddd',
+                    minHeight: 48,
+                    '& .MuiAccordionSummary-content': { margin: 0 }
+                    }}
+                >
+                    <Typography variant="subtitle1" fontWeight="bold" color="text.primary">
+                    Carga Masiva de Productos
+                    </Typography>
+                </AccordionSummary>
+
+                <AccordionDetails sx={{ backgroundColor: '#fff' }}>
+                    <BulkUpload uploadType="productos" onUploadSuccess={fetchProductos} />
+                </AccordionDetails>
+                </Accordion>
+
         </Box>
     );
 };

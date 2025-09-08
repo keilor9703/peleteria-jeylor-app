@@ -28,7 +28,7 @@ const Productos = () => {
 
     return (
         <div>
-            <BulkUpload uploadType="productos" onUploadSuccess={handleProductoAdded} />
+            {/* <BulkUpload uploadType="productos" onUploadSuccess={handleProductoAdded} /> */}
             <ProductoForm 
                 onProductoAdded={handleProductoAdded} 
                 productoToEdit={editingProducto}

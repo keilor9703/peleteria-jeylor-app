@@ -72,7 +72,7 @@ const Clientes = () => {
                 </Tabs>
             </Box>
             <TabPanel value={value} index={0}>
-                <BulkUpload uploadType="clientes" onUploadSuccess={handleClienteAdded} />
+                {/* <BulkUpload uploadType="clientes" onUploadSuccess={handleClienteAdded} /> */}
                 <ClienteForm
                     onClienteAdded={handleClienteAdded}
                     clienteToEdit={editingCliente}

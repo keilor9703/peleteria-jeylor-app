@@ -3,10 +3,14 @@ import apiClient from '../api';
 import { formatCurrency } from '../utils/formatters';
 import { toast } from 'react-toastify';
 import ConfirmationDialog from './ConfirmationDialog';
+import BulkUpload from './BulkUpload'; // ✅ importamos el cargue masivo
 import {
-    Table, TableBody, TableCell, TableContainer,TablePagination, TableHead, TableRow, Paper, Button, IconButton, Typography, useMediaQuery, useTheme, Card, CardContent, CardActions, Box, TextField
+    Table, TableBody, TableCell, TableContainer, TablePagination,
+    TableHead, TableRow, Paper, IconButton, Typography,
+    useMediaQuery, useTheme, Card, CardContent, CardActions,
+    Box, TextField, Accordion, AccordionSummary, AccordionDetails
 } from '@mui/material';
-import { Edit, Delete } from '@mui/icons-material';
+import { Edit, Delete, ExpandMore } from '@mui/icons-material';
 
 const ProductoCard = ({ producto, onEditProducto, handleDelete }) => (
     <Card sx={{ mb: 2 }}>
@@ -30,11 +34,12 @@ const ProductoCard = ({ producto, onEditProducto, handleDelete }) => (
 
 const ProductoList = ({ onEditProducto, onProductoDeleted }) => {
     const [productos, setProductos] = useState([]);
-    const [searchTerm, setSearchTerm] = useState(''); // New state for search term
+    const [searchTerm, setSearchTerm] = useState('');
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
     const [productoToDelete, setProductoToDelete] = useState(null);
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
+
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -59,13 +64,12 @@ const ProductoList = ({ onEditProducto, onProductoDeleted }) => {
         apiClient.delete(`/productos/${productoToDelete}`)
             .then(() => {
                 toast.success('Producto/Servicio eliminado!');
-                fetchProductos(); // Refresh the list
+                fetchProductos();
                 if (onProductoDeleted) {
                     onProductoDeleted();
                 }
             })
-            .catch(error => {
-                console.error('Error deleting producto:', error);
+            .catch(() => {
                 toast.error('Error al eliminar el producto/servicio.');
             })
             .finally(() => {
@@ -92,18 +96,23 @@ const ProductoList = ({ onEditProducto, onProductoDeleted }) => {
     }, [filteredProductos, page, rowsPerPage]);
 
     return (
-        <Paper sx={{ mt: 4 }}>
-            <Typography variant="h6" gutterBottom component="div" sx={{ p: 2 }}>
+        <Paper sx={{ mt: 4, p: 2 }}>
+           
+
+            {/* 🔹 Lista de Productos */}
+            <Typography variant="h6" gutterBottom component="div" sx={{ mt: 3 }}>
                 Lista de Productos
             </Typography>
+
             <TextField
                 label="Buscar Producto"
                 variant="outlined"
                 fullWidth
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                sx={{ mb: 2, mx: 2, width: 'auto' }} // Add margin and auto width for better spacing
+                sx={{ mb: 2, mt: 1 }}
             />
+
             {isMobile ? (
                 <Box sx={{ p: 2 }}>
                     {paginatedProductos.map(producto => (
@@ -150,6 +159,7 @@ const ProductoList = ({ onEditProducto, onProductoDeleted }) => {
                     </Table>
                 </TableContainer>
             )}
+
             <TablePagination
                 rowsPerPageOptions={[5, 10, 25]}
                 component="div"
@@ -163,6 +173,7 @@ const ProductoList = ({ onEditProducto, onProductoDeleted }) => {
                     `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
                 }
             />
+
             <ConfirmationDialog
                 open={showConfirmDialog}
                 handleClose={() => setShowConfirmDialog(false)}

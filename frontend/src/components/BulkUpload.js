@@ -101,10 +101,10 @@ const BulkUpload = ({ uploadType, onUploadSuccess }) => {
     };
 
     return (
-        <Box sx={{ mt: 4, p: 2, border: '1px dashed grey', borderRadius: '4px' }}>
-            <Typography variant="h6" gutterBottom color="text.primary">
+        <Box sx={{ mt: 0.1, p: 2, border: '1px dashed grey', borderRadius: '4px' }}>
+            {/* <Typography variant="h6" gutterBottom color="text.primary">
                 Carga Masiva de {uploadType === 'clientes' ? 'Clientes' : 'Productos'}
-            </Typography>
+            </Typography> */}
             <Input
                 type="file"
                 onChange={handleFileChange}

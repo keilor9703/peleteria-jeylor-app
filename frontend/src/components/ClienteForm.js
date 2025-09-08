@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api';
 import { toast } from 'react-toastify';
-import { Button, TextField, Box, Typography, Grid, InputAdornment } from '@mui/material';
+import { Button, TextField, Box, Typography, Grid, InputAdornment,Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
+import { Edit, Delete, ExpandMore } from '@mui/icons-material';
+import BulkUpload from './BulkUpload'; // ✅ importamos el cargue masivo
+
 
 const ClienteForm = ({ onClienteAdded, clienteToEdit, onClienteUpdated }) => {
     const [nombre, setNombre] = useState('');
@@ -9,6 +12,18 @@ const ClienteForm = ({ onClienteAdded, clienteToEdit, onClienteUpdated }) => {
     const [telefono, setTelefono] = useState('');
     const [direccion, setDireccion] = useState('');
     const [cupoCredito, setCupoCredito] = useState('');
+     const [clientes, setClientes] = useState([]);
+    
+
+     useEffect(() => {
+        fetchClientes();
+    }, []);
+
+    const fetchClientes = () => {
+        apiClient.get('/clientes/')
+            .then(response => setClientes(response.data))
+            .catch(error => console.error('Error fetching clientes:', error));
+    };
 
     useEffect(() => {
         if (clienteToEdit) {
@@ -25,6 +40,14 @@ const ClienteForm = ({ onClienteAdded, clienteToEdit, onClienteUpdated }) => {
             setCupoCredito('');
         }
     }, [clienteToEdit]);
+    
+    const accordionStyles = {
+    mt: 3,
+    borderRadius: 2,
+    boxShadow: 2,
+    '&:before': { display: 'none' } // 🔹 quita la línea fea por defecto
+    };
+
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -114,6 +137,29 @@ const ClienteForm = ({ onClienteAdded, clienteToEdit, onClienteUpdated }) => {
                     </Button>
                 </Grid>
             </Grid>
+
+            <Accordion sx={accordionStyles}>
+            <AccordionSummary
+                expandIcon={<ExpandMore />}
+                sx={{
+                backgroundColor: '#f5f5f5',
+                borderBottom: '1px solid #ddd',
+                borderTopLeftRadius: 8,
+                borderTopRightRadius: 8,
+                minHeight: 48,
+                '& .MuiAccordionSummary-content': { margin: 0 }
+                }}
+            >
+                <Typography variant="subtitle1" fontWeight="bold" color="text.primary">
+                Carga Masiva de Clientes
+                </Typography>
+            </AccordionSummary>
+
+            <AccordionDetails sx={{ backgroundColor: '#fff', borderRadius: 2 }}>
+                <BulkUpload uploadType="clientes" onUploadSuccess={fetchClientes} />
+            </AccordionDetails>
+            </Accordion>
+
         </Box>
     );
 };
