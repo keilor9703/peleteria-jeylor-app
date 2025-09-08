@@ -4,7 +4,7 @@ import { formatCurrency } from '../utils/formatters';
 import { toast } from 'react-toastify';
 import ConfirmationDialog from './ConfirmationDialog';
 import {
-    Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, IconButton, Typography, useMediaQuery, useTheme, Card, CardContent, CardActions, Box, TextField
+    Table, TableBody, TableCell, TableContainer,TablePagination, TableHead, TableRow, Paper, Button, IconButton, Typography, useMediaQuery, useTheme, Card, CardContent, CardActions, Box, TextField
 } from '@mui/material';
 import { Edit, Delete } from '@mui/icons-material';
 
@@ -33,6 +33,8 @@ const ProductoList = ({ onEditProducto, onProductoDeleted }) => {
     const [searchTerm, setSearchTerm] = useState(''); // New state for search term
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
     const [productoToDelete, setProductoToDelete] = useState(null);
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -76,6 +78,19 @@ const ProductoList = ({ onEditProducto, onProductoDeleted }) => {
         producto.nombre.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+    };
+
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
+
+    const paginatedProductos = React.useMemo(() => {
+        return filteredProductos.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+    }, [filteredProductos, page, rowsPerPage]);
+
     return (
         <Paper sx={{ mt: 4 }}>
             <Typography variant="h6" gutterBottom component="div" sx={{ p: 2 }}>
@@ -91,7 +106,7 @@ const ProductoList = ({ onEditProducto, onProductoDeleted }) => {
             />
             {isMobile ? (
                 <Box sx={{ p: 2 }}>
-                    {filteredProductos.map(producto => (
+                    {paginatedProductos.map(producto => (
                         <ProductoCard 
                             key={producto.id}
                             producto={producto}
@@ -114,7 +129,7 @@ const ProductoList = ({ onEditProducto, onProductoDeleted }) => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {filteredProductos.map(producto => (
+                            {paginatedProductos.map(producto => (
                                 <TableRow key={producto.id}>
                                     <TableCell>{producto.id}</TableCell>
                                     <TableCell>{producto.nombre}</TableCell>
@@ -135,6 +150,19 @@ const ProductoList = ({ onEditProducto, onProductoDeleted }) => {
                     </Table>
                 </TableContainer>
             )}
+            <TablePagination
+                rowsPerPageOptions={[5, 10, 25]}
+                component="div"
+                count={filteredProductos.length}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={handleChangePage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+                labelRowsPerPage="Filas por página:"
+                labelDisplayedRows={({ from, to, count }) => 
+                    `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+                }
+            />
             <ConfirmationDialog
                 open={showConfirmDialog}
                 handleClose={() => setShowConfirmDialog(false)}

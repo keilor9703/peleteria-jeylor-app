@@ -67,6 +67,7 @@ const ReporteProductividad = () => {
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
     const [reportData, setReportData] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [showAllOperators, setShowAllOperators] = useState(false);
 
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -84,12 +85,18 @@ const ReporteProductividad = () => {
             .finally(() => setLoading(false));
     };
 
+    const sortedAndFilteredReport = useMemo(() => {
+        if (!reportData || !reportData.reporte) return [];
+        const sorted = [...reportData.reporte].sort((a, b) => b.total_ganado - a.total_ganado);
+        return showAllOperators ? sorted : sorted.slice(0, 5);
+    }, [reportData, showAllOperators]);
+
     const chartData = useMemo(() => {
-        if (!reportData || reportData.reporte.length === 0) {
+        if (!reportData || sortedAndFilteredReport.length === 0) {
             return { labels: [], datasets: [] };
         }
-        const labels = reportData.reporte.map(row => row.operador_username);
-        const data = reportData.reporte.map(row => row.total_ganado);
+        const labels = sortedAndFilteredReport.map(row => row.operador_username);
+        const data = sortedAndFilteredReport.map(row => row.total_ganado);
 
         return {
             labels,
@@ -103,7 +110,7 @@ const ReporteProductividad = () => {
                 },
             ],
         };
-    }, [reportData]);
+    }, [sortedAndFilteredReport]);
 
     const chartOptions = {
         responsive: true,
@@ -286,9 +293,17 @@ const ReporteProductividad = () => {
                     <Grid item xs={12} md={4}>
                         <Paper elevation={3} sx={{ p: 2 }}>
                             <Typography variant="h6" mb={2} color="text.primary">Detalle por Operador</Typography>
+                            {reportData && reportData.reporte.length > 5 && (
+                                <Button 
+                                    onClick={() => setShowAllOperators(!showAllOperators)} 
+                                    sx={{ mb: 2 }}
+                                >
+                                    {showAllOperators ? "Ver Top 5" : "Ver Todos"}
+                                </Button>
+                            )}
                             {isMobile ? (
                                 <Box>
-                                    {reportData.reporte.map(row => (
+                                    {sortedAndFilteredReport.map(row => (
                                         <ProductividadCard
                                             key={row.operador_id}
                                             row={row}
@@ -320,7 +335,7 @@ const ReporteProductividad = () => {
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
-                                            {reportData.reporte.map(row => <Row key={row.operador_id} row={row} />)}
+                                            {sortedAndFilteredReport.map(row => <Row key={row.operador_id} row={row} />)}
                                         </TableBody>
                                     </Table>
                                 </TableContainer>

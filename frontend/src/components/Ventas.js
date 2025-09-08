@@ -5,9 +5,10 @@ import { toast } from 'react-toastify';
 import ConfirmationDialog from './ConfirmationDialog';
 import VentaDetailDialog from './VentaDetailDialog';
 import {
-    Box, Paper, Typography, Grid, TextField, Button, IconButton, Switch, FormControlLabel, Autocomplete, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, useMediaQuery, useTheme, Card, CardContent, CardActions, Tabs, Tab
+    Box, Paper, Typography, Grid, TextField, Button, IconButton, Autocomplete, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, useMediaQuery, useTheme, Card, CardContent, CardActions, Tabs, Tab
 } from '@mui/material';
 import { AddCircleOutline, RemoveCircleOutline, Edit, Delete, Visibility } from '@mui/icons-material';
+import { ToggleButton, ToggleButtonGroup } from '@mui/material';
 
 // Helper component for TabPanel
 function TabPanel(props) {
@@ -88,6 +89,8 @@ const Ventas = () => {
 
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+    const [estadoPago, setEstadoPago] = useState("pagada");
 
     useEffect(() => {
         fetchVentas();
@@ -322,23 +325,38 @@ const Ventas = () => {
                         {/* Subtotal, Pagada switch, and Submit Buttons Section */}
                         <Box>
                             <Grid container spacing={2} justifyContent="flex-end" alignItems="center">
-                                <Grid item xs={12} sm={6}>
-                                    <Typography variant="h6" align="right">Subtotal: {formatCurrency(calculateSubtotal())}</Typography>
-                                </Grid>
-                                <Grid item xs={12} sm={6} sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-                                    <FormControlLabel
-                                        control={<Switch checked={pagada} onChange={(e) => setPagada(e.target.checked)} disabled={!creditoHabilitado} />}
-                                        label="Pagada"
-                                    />
-                                    <Button type="submit" variant="contained" sx={{ ml: 2 }}>
-                                        {editingVenta ? 'Actualizar Venta' : 'Registrar Venta'}
-                                    </Button>
-                                    {editingVenta && (
-                                        <Button onClick={resetForm} sx={{ ml: 1 }}>Cancelar</Button>
-                                    )}
-                                </Grid>
-                                {mensajeCredito && <Grid item xs={12}><Typography color="error">{mensajeCredito}</Typography></Grid>}
+                            <Grid item xs={12} sm={6}>
+                                <Typography variant="h6" align="right">
+                                Subtotal: {formatCurrency(calculateSubtotal())}
+                                </Typography>
                             </Grid>
+
+                           <Grid item xs={12} sm={6} sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                            <ToggleButtonGroup
+                                value={estadoPago}
+                                exclusive
+                                onChange={(e, newValue) => {
+                                if (newValue !== null) {
+                                    setEstadoPago(newValue);
+                                    setPagada(newValue === "pagada"); // sincroniza con tu estado actual
+                                }
+                                }}
+                                sx={{ mr: 2 }}
+                            >
+                                <ToggleButton value="pagada" color="success">💰 Pagada</ToggleButton>
+                                <ToggleButton value="pendiente" color="error">🕒 Pendiente</ToggleButton>
+                            </ToggleButtonGroup>
+
+                            <Button type="submit" variant="contained">
+                                {editingVenta ? 'Actualizar Venta' : 'Registrar Venta'}
+                            </Button>
+                            {editingVenta && (
+                                <Button onClick={resetForm} sx={{ ml: 1 }}>Cancelar</Button>
+                            )}
+                            </Grid>
+
+                            </Grid>
+
                         </Box>
                     </Box>
                 </Paper>
@@ -404,6 +422,7 @@ const Ventas = () => {
                             </Table>
                         </TableContainer>
                     )}
+                    
                 </Paper>
             </TabPanel>
 

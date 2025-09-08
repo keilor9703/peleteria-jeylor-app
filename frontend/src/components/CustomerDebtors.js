@@ -10,6 +10,7 @@ import { toast } from 'react-toastify';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import { visuallyHidden, stableSort, getComparator } from '../utils/sortingUtils';
+import { Button } from '@mui/material';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -71,6 +72,7 @@ const CustomerDebtors = () => {
     const [error, setError] = useState(null);
     const [order, setOrder] = useState('desc');
     const [orderBy, setOrderBy] = useState('total_debt_amount');
+    const [showAllDebtors, setShowAllDebtors] = useState(false);
 
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -122,11 +124,11 @@ const CustomerDebtors = () => {
                     <Box sx={{ maxWidth: '800px', margin: 'auto', mb: 3 }}>
                         <Bar
                             data={{
-                                labels: sortedCustomerDebtors.map(customer => customer.client_name),
+                                labels: (showAllDebtors ? sortedCustomerDebtors : sortedCustomerDebtors.slice(0, 5)).map(customer => customer.client_name),
                                 datasets: [
                                     {
                                         label: 'Monto Total Adeudado',
-                                        data: sortedCustomerDebtors.map(customer => customer.total_debt_amount),
+                                        data: (showAllDebtors ? sortedCustomerDebtors : sortedCustomerDebtors.slice(0, 5)).map(customer => customer.total_debt_amount),
                                         backgroundColor: 'rgba(255, 99, 132, 0.6)',
                                         borderColor: 'rgba(255, 99, 132, 1)',
                                         borderWidth: 1,
@@ -145,9 +147,17 @@ const CustomerDebtors = () => {
                             }}
                         />
                     </Box>
+                    {customerDebtors.length > 5 && (
+                        <Button 
+                            onClick={() => setShowAllDebtors(!showAllDebtors)} 
+                            sx={{ mt: 2, mb: 4 }}
+                        >
+                            {showAllDebtors ? "Ver Top 5" : "Ver Todos"}
+                        </Button>
+                    )}
                     {isMobile ? (
                         <Box>
-                            {sortedCustomerDebtors.map(customer => (
+                            {(showAllDebtors ? sortedCustomerDebtors : sortedCustomerDebtors.slice(0, 5)).map(customer => (
                                 <CustomerDebtorCard key={customer.client_id} customer={customer} formatCurrency={formatCurrency} />
                             ))}
                         </Box>
@@ -174,7 +184,7 @@ const CustomerDebtors = () => {
                                         onRequestSort={handleRequestSort}
                                     />
                                     <TableBody>
-                                        {sortedCustomerDebtors.map((customer) => (
+                                        {(showAllDebtors ? sortedCustomerDebtors : sortedCustomerDebtors.slice(0, 5)).map((customer) => (
                                             <TableRow key={customer.client_id}>
                                                 <TableCell><Typography color="text.primary">{customer.client_id}</Typography></TableCell>
                                                 <TableCell><Typography color="text.primary">{customer.client_name}</Typography></TableCell>

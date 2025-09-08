@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Box, Tabs, Tab, Typography } from '@mui/material'; // Added Tabs and Tab
-import ResumenVentas from './ResumenVentas'; // Keep this for the first tab
-import ProductSales from './ProductSales'; // New import
-import CustomerBuyers from './CustomerBuyers'; // New import
-import CustomerDebtors from './CustomerDebtors'; // New import
-import RentabilidadReporte from './RentabilidadReporte'; // <-- Importar nuevo componente
+import { Box, Tabs, Tab, Typography } from '@mui/material';
+import ResumenVentas from './ResumenVentas';
+import ProductSales from './ProductSales';
+import CustomerBuyers from './CustomerBuyers';
+import CustomerDebtors from './CustomerDebtors';
+import RentabilidadReporte from './RentabilidadReporte';
 import ReporteProductividad from './ReporteProductividad';
 
 // Helper component for TabPanel
@@ -20,7 +20,14 @@ function TabPanel(props) {
             {...other}
         >
             {value === index && (
-                <Box sx={{ p: 3 }}>
+                <Box 
+                    sx={{ 
+                        p: { xs: 1, sm: 3 },   // 👈 menos padding en móvil
+                        width: '100%', 
+                        maxWidth: '100%',      // 👈 asegura que no desborde
+                        overflowX: 'hidden'    // 👈 evita scroll horizontal
+                    }}
+                >
                     {children}
                 </Box>
             )}
@@ -37,7 +44,7 @@ function a11yProps(index) {
 }
 
 const Reportes = () => {
-    const [value, setValue] = useState(0); // State for tab selection
+    const [value, setValue] = useState(0);
 
     const handleChange = (event, newValue) => {
         setValue(newValue);
@@ -45,9 +52,17 @@ const Reportes = () => {
 
     return (
         <Box sx={{ width: '100%' }}>
-            <Typography variant="h4" gutterBottom color="text.primary">Reportes Detallados</Typography> {/* Updated title */}
+            <Typography variant="h4" gutterBottom color="text.primary">
+                Reportes Detallados
+            </Typography>
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-                <Tabs value={value} onChange={handleChange} aria-label="report tabs" variant="scrollable" scrollButtons="auto">
+                <Tabs 
+                    value={value} 
+                    onChange={handleChange} 
+                    aria-label="report tabs" 
+                    variant="scrollable" 
+                    scrollButtons="auto"
+                >
                     <Tab label="Resumen General" {...a11yProps(0)} />
                     <Tab label="Ventas por Producto" {...a11yProps(1)} />
                     <Tab label="Rentabilidad" {...a11yProps(2)} />
@@ -56,6 +71,7 @@ const Reportes = () => {
                     <Tab label="Productividad" {...a11yProps(5)} />
                 </Tabs>
             </Box>
+
             <TabPanel value={value} index={0}>
                 <ResumenVentas />
             </TabPanel>

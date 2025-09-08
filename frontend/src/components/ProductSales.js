@@ -162,6 +162,8 @@ const ProductSales = () => {
     const [endDate, setEndDate] = useState('');
     const [order, setOrder] = useState('desc');
     const [orderBy, setOrderBy] = useState('total_revenue');
+    const [showAllProductos, setShowAllProductos] = useState(false);
+    const [showAllServicios, setShowAllServicios] = useState(false);
 
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -254,22 +256,39 @@ const ProductSales = () => {
                 <Box>
                     <SalesTable 
                         title="Productos Vendidos" 
-                        data={sortedProductos} 
+                        data={showAllProductos ? sortedProductos : sortedProductos.slice(0, 5)} 
                         order={order}
                         orderBy={orderBy}
                         onRequestSort={handleRequestSort}
                         isMobile={isMobile}
                         theme={theme}
                     />
+                    {sortedProductos.length > 5 && (
+                        <Button 
+                            onClick={() => setShowAllProductos(!showAllProductos)} 
+                            sx={{ mt: 2, mb: 4 }}
+                        >
+                            {showAllProductos ? "Ver Top 5" : "Ver Todos"}
+                        </Button>
+                    )}
+
                     <SalesTable 
                         title="Servicios Prestados" 
-                        data={sortedServicios} 
+                        data={showAllServicios ? sortedServicios : sortedServicios.slice(0, 5)} 
                         order={order}
                         orderBy={orderBy}
                         onRequestSort={handleRequestSort}
                         isMobile={isMobile}
                         theme={theme}
                     />
+                    {sortedServicios.length > 5 && (
+                        <Button 
+                            onClick={() => setShowAllServicios(!showAllServicios)} 
+                            sx={{ mt: 2, mb: 4 }}
+                        >
+                            {showAllServicios ? "Ver Top 5" : "Ver Todos"}
+                        </Button>
+                    )}
                 </Box>
             )}
         </Box>

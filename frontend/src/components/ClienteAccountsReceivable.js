@@ -101,7 +101,7 @@ const ClienteAccountsReceivable = () => {
                     </Box>
 
                     <Typography>Total: {formatCurrency(venta.total)}</Typography>
-                    <Typography>Pagado: {formatCurrency(venta.monto_pagado)}</Typography>
+                    {/* <Typography>Pagado: {formatCurrency(venta.monto_pagado)}</Typography> */}
                     <Typography>Saldo: {formatCurrency(venta.total - venta.monto_pagado)}</Typography>
 
                     <Box sx={{ mt: 1 }}>{getEstadoPagoChip(venta.estado_pago)}</Box>

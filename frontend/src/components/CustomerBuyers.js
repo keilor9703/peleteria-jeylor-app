@@ -73,6 +73,7 @@ const CustomerBuyers = () => {
     const [endDate, setEndDate] = useState('');
     const [order, setOrder] = useState('desc');
     const [orderBy, setOrderBy] = useState('total_purchase_amount');
+    const [showAllCustomers, setShowAllCustomers] = useState(false);
 
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -163,11 +164,11 @@ const CustomerBuyers = () => {
                     <Box sx={{ maxWidth: '800px', margin: 'auto', mb: 3 }}>
                         <Bar
                             data={{
-                                labels: sortedCustomerBuyers.map(customer => customer.client_name),
+                                labels: (showAllCustomers ? sortedCustomerBuyers : sortedCustomerBuyers.slice(0, 5)).map(customer => customer.client_name),
                                 datasets: [
                                     {
                                         label: 'Monto Total Comprado',
-                                        data: sortedCustomerBuyers.map(customer => customer.total_purchase_amount),
+                                        data: (showAllCustomers ? sortedCustomerBuyers : sortedCustomerBuyers.slice(0, 5)).map(customer => customer.total_purchase_amount),
                                         backgroundColor: 'rgba(54, 162, 235, 0.6)',
                                         borderColor: 'rgba(54, 162, 235, 1)',
                                         borderWidth: 1,
@@ -186,9 +187,17 @@ const CustomerBuyers = () => {
                             }}
                         />
                     </Box>
+                    {customerBuyers.length > 5 && (
+                        <Button 
+                            onClick={() => setShowAllCustomers(!showAllCustomers)} 
+                            sx={{ mt: 2, mb: 4 }}
+                        >
+                            {showAllCustomers ? "Ver Top 5" : "Ver Todos"}
+                        </Button>
+                    )}
                     {isMobile ? (
                         <Box>
-                            {sortedCustomerBuyers.map(customer => (
+                            {(showAllCustomers ? sortedCustomerBuyers : sortedCustomerBuyers.slice(0, 5)).map(customer => (
                                 <CustomerBuyerCard key={customer.client_id} customer={customer} formatCurrency={formatCurrency} />
                             ))}
                         </Box>
@@ -215,7 +224,7 @@ const CustomerBuyers = () => {
                                         onRequestSort={handleRequestSort}
                                     />
                                     <TableBody>
-                                        {sortedCustomerBuyers.map((customer) => (
+                                        {(showAllCustomers ? sortedCustomerBuyers : sortedCustomerBuyers.slice(0, 5)).map((customer) => (
                                             <TableRow key={customer.client_id}>
                                                 <TableCell><Typography color="text.primary">{customer.client_id}</Typography></TableCell>
                                                 <TableCell><Typography color="text.primary">{customer.client_name}</Typography></TableCell>

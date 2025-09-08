@@ -34,6 +34,7 @@ const RentabilidadReporte = () => {
     const [error, setError] = useState(null);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+    const [showAllReport, setShowAllReport] = useState(false);
 
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -66,6 +67,11 @@ const RentabilidadReporte = () => {
         setEndDate('');
         fetchReportData();
     };
+
+    const sortedAndFilteredData = useMemo(() => {
+        const sorted = [...reportData].sort((a, b) => b.net_profit - a.net_profit);
+        return showAllReport ? sorted : sorted.slice(0, 5);
+    }, [reportData, showAllReport]);
 
     return (
         <Box>
@@ -106,20 +112,20 @@ const RentabilidadReporte = () => {
                 </Box>
             ) : error ? (
                 <Typography color="error">{error}</Typography>
-            ) : reportData.length === 0 ? (
+            ) : sortedAndFilteredData.length === 0 ? (
                 <Typography color="text.primary">No hay datos de rentabilidad para el período seleccionado.</Typography>
             ) : (
                 <Box>
                     <Box sx={{ maxWidth: '800px', margin: 'auto', mb: 3 }}>
                         <Bar
                             data={{
-                                labels: reportData.map(item => item.product_name),
+                                labels: sortedAndFilteredData.map(item => item.product_name),
                                 datasets: [
                                     {
                                         label: 'Ganancia Neta',
-                                        data: reportData.map(item => item.net_profit),
-                                        backgroundColor: reportData.map(item => item.net_profit > 0 ? 'rgba(75, 192, 192, 0.6)' : 'rgba(255, 99, 132, 0.6)'),
-                                        borderColor: reportData.map(item => item.net_profit > 0 ? 'rgba(75, 192, 192, 1)' : 'rgba(255, 99, 132, 1)'),
+                                        data: sortedAndFilteredData.map(item => item.net_profit),
+                                        backgroundColor: sortedAndFilteredData.map(item => item.net_profit > 0 ? 'rgba(75, 192, 192, 0.6)' : 'rgba(255, 99, 132, 0.6)'),
+                                        borderColor: sortedAndFilteredData.map(item => item.net_profit > 0 ? 'rgba(75, 192, 192, 1)' : 'rgba(255, 99, 132, 1)'),
                                         borderWidth: 1,
                                     },
                                 ],
@@ -136,9 +142,17 @@ const RentabilidadReporte = () => {
                             }}
                         />
                     </Box>
+                    {reportData.length > 5 && (
+                        <Button 
+                            onClick={() => setShowAllReport(!showAllReport)} 
+                            sx={{ mt: 2, mb: 4 }}
+                        >
+                            {showAllReport ? "Ver Top 5" : "Ver Todos"}
+                        </Button>
+                    )}
                     {isMobile ? (
                         <Box>
-                            {reportData.map(item => (
+                            {sortedAndFilteredData.map(item => (
                                 <RentabilidadCard key={item.product_id} item={item} formatCurrency={formatCurrency} />
                             ))}
                         </Box>
@@ -170,7 +184,7 @@ const RentabilidadReporte = () => {
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
-                                        {reportData.map((item) => (
+                                        {sortedAndFilteredData.map((item) => (
                                             <TableRow key={item.product_id}>
                                                 <TableCell><Typography color="text.primary">{item.product_name}</Typography></TableCell>
                                                 <TableCell align="right"><Typography color="text.primary">{item.total_quantity_sold}</Typography></TableCell>

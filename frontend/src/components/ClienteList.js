@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api';
 import { formatCurrency } from '../utils/formatters';
@@ -7,9 +7,12 @@ import ConfirmationDialog from './ConfirmationDialog';
 import ClienteFinancialHistoryDialog from './ClienteFinancialHistoryDialog'; // New import
 import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button,
-    IconButton, Typography, useMediaQuery, useTheme, Card, CardContent, CardActions, Box
+    IconButton, Typography, useMediaQuery, useTheme, Card, CardContent, CardActions, Box,TextField,TablePagination
 } from '@mui/material';
 import { Edit, Delete, History } from '@mui/icons-material'; // Added History import back
+
+
+
 
 const ClienteCard = ({ cliente, onEditCliente, handleDelete, handleViewHistory }) => (
     <Card sx={{ mb: 2 }}>
@@ -38,6 +41,7 @@ const ClienteCard = ({ cliente, onEditCliente, handleDelete, handleViewHistory }
 
 const ClienteList = ({ onEditCliente, onClienteDeleted }) => {
     const [clientes, setClientes] = useState([]);
+    const [searchTerm, setSearchTerm] = useState('');
     const navigate = useNavigate();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -47,6 +51,22 @@ const ClienteList = ({ onEditCliente, onClienteDeleted }) => {
 
     const [showHistoryDialog, setShowHistoryDialog] = useState(false); // New state
     const [selectedClienteForHistory, setSelectedClienteForHistory] = useState(null); // New state
+
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+
+    const filteredClientes = useMemo(() => {
+        if (!searchTerm) {
+            return clientes;
+        }
+        const lowerCaseSearchTerm = searchTerm.toLowerCase();
+        return clientes.filter(cliente =>
+            cliente.nombre.toLowerCase().includes(lowerCaseSearchTerm) ||
+            (cliente.cedula && cliente.cedula.toLowerCase().includes(lowerCaseSearchTerm)) ||
+            (cliente.telefono && cliente.telefono.toLowerCase().includes(lowerCaseSearchTerm)) ||
+            (cliente.direccion && cliente.direccion.toLowerCase().includes(lowerCaseSearchTerm))
+        );
+    }, [clientes, searchTerm]);
 
     useEffect(() => {
         fetchClientes();
@@ -94,14 +114,35 @@ const ClienteList = ({ onEditCliente, onClienteDeleted }) => {
         setSelectedClienteForHistory(null);
     };
 
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+    };
+
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
+
+    const paginatedClientes = useMemo(() => {
+        return filteredClientes.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+    }, [filteredClientes, page, rowsPerPage]);
+
     return (
         <Paper sx={{ mt: 4 }}>
             <Typography variant="h6" gutterBottom component="div" sx={{ p: 2 }}>
                 Lista de Clientes
             </Typography>
+            <TextField
+                label="Buscar Cliente"
+                variant="outlined"
+                fullWidth
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                sx={{ mb: 2, mx: 2, width: 'auto' }} // Añadir margen y ancho automático
+            />
             {isMobile ? (
                 <Box sx={{ p: 2 }}>
-                    {clientes.map(cliente => (
+                    {paginatedClientes.map(cliente => (
                         <ClienteCard
                             key={cliente.id}
                             cliente={cliente}
@@ -126,7 +167,7 @@ const ClienteList = ({ onEditCliente, onClienteDeleted }) => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {clientes.map(cliente => (
+                            {paginatedClientes.map(cliente => (
                                 <TableRow key={cliente.id}>
                                     <TableCell>{cliente.id}</TableCell>
                                     <TableCell>{cliente.nombre}</TableCell>
@@ -151,6 +192,19 @@ const ClienteList = ({ onEditCliente, onClienteDeleted }) => {
                     </Table>
                 </TableContainer>
             )}
+            <TablePagination
+                rowsPerPageOptions={[5, 10, 25]}
+                component="div"
+                count={filteredClientes.length}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={handleChangePage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+                labelRowsPerPage="Filas por página:"
+                labelDisplayedRows={({ from, to, count }) => 
+                    `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+                }
+            />
 
             <ConfirmationDialog
                 open={showConfirmDialog}
