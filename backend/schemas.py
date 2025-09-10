@@ -520,3 +520,13 @@ class BulkLoadResponse(BaseModel):
     message: str
     created_records: int = 0
     errors: List[str] = []
+
+class MovementExcel(BaseModel):
+    producto_id: Optional[int]
+    producto_nombre: Optional[str]
+    tipo: str   # entrada | salida | ajuste
+    cantidad: float
+    costo_unitario: Optional[float] = 0.0
+    motivo: Optional[str] = None
+    referencia: Optional[str] = None
+    observacion: Optional[str] = None

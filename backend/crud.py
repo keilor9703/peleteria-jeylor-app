@@ -1118,7 +1118,6 @@ def cerrar_orden_trabajo(db: Session, orden_id: int, admin_user: models.User, cl
     return db_orden
 
 # --- CRUD para Notificaciones ---
-# --- CRUD para Notificaciones ---
 
 def create_notificacion(db: Session, notificacion: schemas.NotificacionCreate):
     db_notificacion = models.Notificacion(**notificacion.dict())
@@ -1506,6 +1505,165 @@ def bulk_create_productos(db: Session, file: IO, filename: str):
     return {
         "success": True,
         "message": f"Carge masivo finalizado. {created_count} productos creados."   + (f" Error: {len(errors)} registros con problemas: {errors}" if errors else ""),
+        "created_records": created_count,
+        "errors": errors
+    }
+
+
+def bulk_create_movimientos(db: Session, file: IO, filename: str):
+    try:
+        file_extension = filename.split('.')[-1].lower()
+        if file_extension == 'xls':
+            df = pd.read_excel(file, engine='xlrd')
+        elif file_extension == 'xlsx':
+            df = pd.read_excel(file, engine='openpyxl')
+        elif file_extension == 'csv':
+            try:
+                # 1. Intentar UTF-8
+                df = pd.read_csv(file, encoding="utf-8")
+            except UnicodeDecodeError:
+                file.seek(0)
+                # 2. Fallback Latin-1 (Excel en Windows)
+                df = pd.read_csv(file, encoding="latin-1")
+            except Exception:
+                file.seek(0)
+                # 3. Intentar con separador ;
+                df = pd.read_csv(file, sep=";", encoding="latin-1")
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Formato no soportado: {file_extension}. Use .xls, .xlsx o .csv."
+            )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error procesando archivo: {e}")
+
+    # ✅ Normalizar encabezados
+    df.columns = [str(c).strip().lower().replace("\r", "").replace("\n", "") for c in df.columns]
+    print("DEBUG columnas normalizadas:", df.columns.tolist())
+
+    # ✅ Alias de encabezados
+    aliases = {
+        "producto_id": ["producto_id", "id_producto"],
+        "producto_nombre": ["producto_nombre", "producto_non", "nombre_producto"],
+        "tipo": ["tipo"],
+        "cantidad": ["cantidad", "qty"],
+        "costo_unitario": ["costo_unitario", "costo"],
+        "motivo": ["motivo"],
+        "referencia": ["referencia"],
+        "observacion": ["observacion", "observación"],
+    }
+
+    # Mapear columnas
+    col_map = {}
+    for expected, options in aliases.items():
+        for opt in options:
+            if opt in df.columns:
+                col_map[expected] = opt
+                break
+
+    # Validar requeridas
+    for col in ["tipo", "cantidad"]:
+        if col not in col_map:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Falta la columna requerida '{col}'. Columnas detectadas: {df.columns.tolist()}"
+            )
+
+    created_count = 0
+    errors = []
+
+    # 🔎 Normalización de nombres de producto
+    def normalize_name(name: str) -> str:
+        return "".join(str(name).lower().split())
+
+    # ✅ Convertir NaN a string vacío
+    def safe_str(value):
+        return "" if pd.isna(value) else str(value)
+
+    # Mapas de productos
+    productos = db.query(models.Producto).all()
+    productos_by_id = {p.id: p for p in productos}
+    productos_by_name = {normalize_name(p.nombre): p for p in productos}
+
+    # ✅ Iterar filas
+    for index, row in df.iterrows():
+        try:
+            producto_id = None
+            prod = None
+
+            # Opción 1: ID
+            if "producto_id" in col_map and pd.notna(row.get(col_map["producto_id"])):
+                try:
+                    producto_id = int(row[col_map["producto_id"]])
+                    prod = productos_by_id.get(producto_id)
+                except Exception:
+                    pass
+
+            # Opción 2: Nombre
+            if not prod and "producto_nombre" in col_map and pd.notna(row.get(col_map["producto_nombre"])):
+                norm_name = normalize_name(row[col_map["producto_nombre"]])
+                prod = productos_by_name.get(norm_name)
+                if prod:
+                    producto_id = prod.id
+
+            if not prod:
+                errors.append(
+                    f"Fila {index+2}: Producto no encontrado "
+                    f"(id='{row.get(col_map.get('producto_id'), '')}', "
+                    f"nombre='{row.get(col_map.get('producto_nombre'), '')}')."
+                )
+                continue
+
+            # Validar tipo
+            tipo = str(row[col_map["tipo"]]).lower().strip()
+            if tipo not in ["entrada", "salida", "ajuste"]:
+                errors.append(f"Fila {index+2}: Tipo '{tipo}' no es válido (use entrada, salida o ajuste).")
+                continue
+
+            # Validar cantidad
+            cantidad = float(row[col_map["cantidad"]]) if pd.notna(row[col_map["cantidad"]]) else 0
+            if tipo in ["entrada", "salida"] and cantidad <= 0:
+                errors.append(f"Fila {index+2}: Cantidad debe ser > 0 para entradas/salidas.")
+                continue
+
+            # Validar stock en salidas
+            if tipo == "salida" and (prod.stock_actual or 0) < cantidad:
+                errors.append(
+                    f"Fila {index+2}: Stock insuficiente para salida de {cantidad}. "
+                    f"Stock actual={prod.stock_actual}."
+                )
+                continue
+
+            # Extras
+            costo_unitario = (
+                float(row.get(col_map["costo_unitario"], 0.0))
+                if "costo_unitario" in col_map and pd.notna(row.get(col_map["costo_unitario"]))
+                else 0.0
+            )
+            motivo = safe_str(row.get(col_map.get("motivo")))
+            referencia = safe_str(row.get(col_map.get("referencia")))
+            observacion = safe_str(row.get(col_map.get("observacion")))
+
+            # ✅ Crear movimiento
+            payload = schemas.InventoryMovementCreate(
+                producto_id=producto_id,
+                tipo=tipo,
+                cantidad=cantidad,
+                costo_unitario=costo_unitario,
+                motivo=motivo,
+                referencia=referencia,
+                observacion=observacion
+            )
+            create_movement(db, payload)
+            created_count += 1
+
+        except Exception as e:
+            errors.append(f"Error en fila {index+2}: {e}")
+
+    return {
+        "success": True if created_count > 0 else False,
+        "message": f"Cargue masivo finalizado. {created_count} movimientos creados."
+                   + (f" {len(errors)} errores encontrados." if errors else ""),
         "created_records": created_count,
         "errors": errors
     }

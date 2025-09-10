@@ -590,6 +590,16 @@ def delete_venta(venta_id: int, db: Session = Depends(get_db), current_user: sch
     return {"message": "Venta deleted successfully"}
 
 # ENDPOINTS PARA MOVIMIENTOS E INVENTARIO
+
+@app.post("/movimientos/upload", response_model=schemas.BulkLoadResponse)
+def upload_movimientos(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    return crud.bulk_create_movimientos(db=db, file=file.file, filename=file.filename)
+
+
 @app.post("/inventario/movimientos", response_model=schemas.InventoryMovementOut)
 def crear_movimiento(payload: schemas.InventoryMovementCreate, db: Session = Depends(get_db)):
     try:

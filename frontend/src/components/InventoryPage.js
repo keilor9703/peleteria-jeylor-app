@@ -11,6 +11,7 @@ import apiClient from '../api';
 import Autocomplete from '@mui/material/Autocomplete';
 
 import ExpandMore from "@mui/icons-material/ExpandMore";
+import BulkUpload from './BulkUpload'; 
 
 
 /* ---------------------- Banner de stock bajo (tema-aware) ---------------------- */
@@ -411,14 +412,47 @@ return (
 };
 
 /* ------------------------------ Página wrapper ------------------------------ */
+
+
 export default function InventoryPage() {
   const [refresh, setRefresh] = useState(0);
+
+  const handleRefresh = () => setRefresh((x) => x + 1);
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2 } }}>
       <LowStockBanner />
-      <MovementForm onCreated={() => setRefresh((x) => x + 1)} />
+
+      {/* Acordeón para crear movimiento manual */}
+      <MovementForm onCreated={handleRefresh} />
+
+      {/* ⬇️ Nuevo acordeón para carga masiva */}
+      <Accordion
+        sx={{
+          mb: 2,
+          borderRadius: 2,
+          boxShadow: 2,
+          overflow: "hidden",
+          "&:before": { display: "none" }
+        }}
+      >
+        <AccordionSummary
+          expandIcon={<ExpandMore />}
+          sx={{ minHeight: 48, "& .MuiAccordionSummary-content": { margin: 0 } }}
+        >
+          <Typography variant="subtitle1" fontWeight="bold" color="text.primary">
+            Carga Masiva de Movimientos
+          </Typography>
+        </AccordionSummary>
+
+        <AccordionDetails>
+          <BulkUpload uploadType="movimientos" onUploadSuccess={handleRefresh} />
+        </AccordionDetails>
+      </Accordion>
+
+      {/* Tabla de movimientos recientes */}
       <MovementsTable key={refresh} />
     </Box>
   );
 }
+

@@ -16,44 +16,51 @@ const BulkUpload = ({ uploadType, onUploadSuccess }) => {
     setError(null);
     setSuccess(null);
     setValidationError(null);
+
     if (!selectedFile) return;
 
     const fileName = selectedFile.name;
-    const fileExtension = fileName.split('.').pop().toLowerCase();
+    const fileExtension = fileName.split(".").pop().toLowerCase();
 
     // 1) Validar tipo
-    if (!['xls', 'xlsx', 'csv'].includes(fileExtension)) {
-      setValidationError('Tipo de archivo no soportado. Use .xls, .xlsx o .csv.');
+    if (!["xls", "xlsx", "csv"].includes(fileExtension)) {
+      setValidationError("Tipo de archivo no soportado. Use .xls, .xlsx o .csv.");
       return;
     }
 
     // 2) Validar encabezados solo para CSV (Excel se valida en backend)
-    if (fileExtension === 'csv') {
+    if (fileExtension === "csv") {
       const reader = new FileReader();
       reader.onload = (e) => {
         const content = e.target.result;
-        const headers = content.split('\n')[0].split(',').map(h => h.trim().toLowerCase());
+        const headers = content
+          .split("\n")[0]
+          .split(",")
+          .map((h) => h.trim().toLowerCase());
 
         let requiredHeaders = [];
         let optionalHeaders = [];
 
-        if (uploadType === 'clientes') {
-          requiredHeaders = ['nombre', 'cedula', 'telefono', 'direccion', 'cupo_credito'];
-        } else if (uploadType === 'productos') {
-          requiredHeaders = ['nombre', 'precio', 'costo', 'es_servicio', 'unidad_medida'];
-          // Opcionales:
-          optionalHeaders = ['sku', 'stock_inicial']; // <-- NUEVO
+        if (uploadType === "clientes") {
+          requiredHeaders = ["nombre", "cedula", "telefono", "direccion", "cupo_credito"];
+        } else if (uploadType === "productos") {
+          requiredHeaders = ["nombre", "precio", "costo", "es_servicio", "unidad_medida"];
+          optionalHeaders = ["sku", "stock_inicial"];
+        } else if (uploadType === 'movimientos') {
+          requiredHeaders = ['tipo', 'cantidad'];
+          optionalHeaders = ['producto_id', 'producto_nombre', 'costo_unitario', 'motivo', 'referencia', 'observacion'];
         }
 
-        const missing = requiredHeaders.filter(h => !headers.includes(h));
+        const missing = requiredHeaders.filter((h) => !headers.includes(h));
         if (missing.length > 0) {
-          setValidationError(`Faltan columnas requeridas: ${missing.join(', ')}`);
+          setValidationError(`Faltan columnas requeridas: ${missing.join(", ")}`);
           return;
         }
 
-        // No hacemos obligatoria 'stock_inicial'; si está, el backend la usa.
+        console.log("Encabezados detectados:", headers);
       };
-      reader.onerror = () => setValidationError('Error al leer el archivo.');
+
+      reader.onerror = () => setValidationError("Error al leer el archivo.");
       reader.readAsText(selectedFile);
     }
   };
@@ -82,7 +89,9 @@ const BulkUpload = ({ uploadType, onUploadSuccess }) => {
   const handleDownloadTemplate = () => {
     let templateFileName = '';
     if (uploadType === 'clientes') templateFileName = 'clientes_template.csv';
-    if (uploadType === 'productos') templateFileName = 'productos_template.csv'; // <-- incluye stock_inicial
+    if (uploadType === 'productos') templateFileName = 'productos_template.csv';
+    if (uploadType === 'movimientos') templateFileName = 'movimientos_template.csv';
+    
 
     if (templateFileName) window.location.href = `/${templateFileName}`;
   };
