@@ -1372,102 +1372,140 @@ def bulk_create_clientes(db: Session, file: IO, filename: str):
         elif file_extension == 'csv':
             df = pd.read_csv(file)
         else:
-            raise HTTPException(status_code=400, detail=f"Unsupported file format: {file_extension}. Please upload a .xls, .xlsx, or .csv file.")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file format: {file_extension}. Please upload a .xls, .xlsx, or .csv file."
+            )
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error processing file: {e}")
 
     created_count = 0
     errors = []
 
+    # ✅ Guardar cédulas ya existentes en la BD
+    existing_cedulas = {
+        str(c.cedula)
+        for c in db.query(models.Cliente).all()
+        if c.cedula is not None
+    }
+
+    # ✅ Guardar cédulas vistas en este archivo
+    seen_cedulas = set()
+
     for index, row in df.iterrows():
         try:
+            cedula = str(row.get("cedula")).strip() if pd.notna(row.get("cedula")) else None
+
+            # Validar si no tiene cédula
+            if not cedula:
+                errors.append(f"Row {index + 2}: Cliente sin cédula, no se puede registrar.")
+                continue
+
+            # Validar duplicados en la BD
+            if cedula in existing_cedulas:
+                errors.append(f"Row {index + 2}: Cliente con cédula {cedula} ya existe en la base de datos.")
+                continue
+
+            # Validar duplicados en el mismo archivo
+            if cedula in seen_cedulas:
+                errors.append(f"Row {index + 2}: Cliente con cédula {cedula} duplicado en el archivo.")
+                continue
+
+            # Marcar como visto
+            seen_cedulas.add(cedula)
+
+            # Crear cliente
             cliente_data = schemas.ClienteCreate(
                 nombre=row['nombre'],
-                cedula=str(row.get('cedula')) if pd.notna(row.get('cedula')) else None,
+                cedula=cedula,
                 telefono=str(row.get('telefono')) if pd.notna(row.get('telefono')) else None,
                 direccion=row.get('direccion'),
                 cupo_credito=row.get('cupo_credito', 0.0)
             )
             create_cliente(db, cliente_data)
             created_count += 1
+
         except Exception as e:
-            errors.append(f"Error creating client in row {index + 2}: {e}")
+            errors.append(f"Row {index + 2}: Error creando cliente -> {e}")
 
     return {
         "success": True,
-        "message": f"Bulk client upload finished. {created_count} clients created." + (f" Errors: {errors}" if errors else ""),
+        "message": f"BCarge masivo finalizado. {created_count} clientes creados."
+                   + (f" Errors: {len(errors)} registros con problemas: {errors}" if errors else ""),
         "created_records": created_count,
         "errors": errors
     }
 
 def bulk_create_productos(db: Session, file: IO, filename: str):
     try:
-        ext = filename.split('.')[-1].lower()
-        if ext == 'xls':
+        file_extension = filename.split('.')[-1].lower()
+        if file_extension == 'xls':
             df = pd.read_excel(file, engine='xlrd')
-        elif ext == 'xlsx':
+        elif file_extension == 'xlsx':
             df = pd.read_excel(file, engine='openpyxl')
-        elif ext == 'csv':
+        elif file_extension == 'csv':
             df = pd.read_csv(file)
         else:
-            raise HTTPException(status_code=400, detail=f"Unsupported file format: {ext}. Please upload .xls, .xlsx, or .csv")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Formato no soportado: {file_extension}. Porfavor cargue achivos tipo .xls, .xlsx, or .csv file."
+            )
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error processing file: {e}")
+        raise HTTPException(status_code=400, detail=f"Error procesando archivo: {e}")
 
     created_count = 0
     errors = []
 
-    def _to_bool(v):
-        if pd.isna(v):
-            return False
-        s = str(v).strip().lower()
-        return s in ("1", "true", "t", "si", "sí", "x", "yes")
+    # 🔎 Normalización de nombres: minúsculas + sin espacios
+    def normalize_name(name: str) -> str:
+        return "".join(str(name).lower().split())
 
-    for idx, row in df.iterrows():
+    # 1. Obtener nombres existentes en la BD
+    existing_names = {
+        normalize_name(p.nombre)
+        for p in db.query(models.Producto).all()
+    }
+
+    # 2. Mantener set de nombres vistos en este archivo
+    seen_names = set()
+
+    for index, row in df.iterrows():
         try:
-            nombre = row['nombre']
-            precio = float(row['precio'])
-            costo = float(row.get('costo', 0.0) or 0.0)
-            es_servicio = _to_bool(row.get('es_servicio', False))
-            unidad_medida = row.get('unidad_medida', 'UND') or 'UND'
-            stock_minimo = float(row.get('stock_minimo', 0.0) or 0.0)
-            stock_inicial = float(row.get('stock_inicial', 0.0) or 0.0)
+            raw_name = row['nombre']
+            norm_name = normalize_name(raw_name)
 
-            # Crear producto (incluye stock_minimo)
+            # Validar duplicados
+            if norm_name in existing_names:
+                errors.append(
+                    f"Row {index + 2}: Producto '{raw_name}' ya existe en la base de datos."
+                )
+                continue
+            if norm_name in seen_names:
+                errors.append(
+                    f"Row {index + 2}: Producto '{raw_name}' está duplicado en el archivo."
+                )
+                continue
+
+            # Marcar como visto
+            seen_names.add(norm_name)
+
+            # Crear producto
             producto_data = schemas.ProductoCreate(
-                nombre=nombre,
-                precio=precio,
-                costo=costo,
-                es_servicio=es_servicio,
-                unidad_medida=unidad_medida,
-                stock_minimo=stock_minimo
+                nombre=raw_name,
+                precio=row['precio'],
+                costo=row.get('costo', 0.0),
+                es_servicio=row.get('es_servicio', False),
+                unidad_medida=row.get('unidad_medida', 'UND'),
+                stock_minimo=row.get('stock_minimo', 0)
             )
-            prod = create_producto(db, producto_data)
-
-            # Si hay stock_inicial y NO es servicio, crear movimiento ENTRADA
-            if stock_inicial > 0 and not es_servicio:
-                try:
-                    payload = schemas.InventoryMovementCreate(
-                        producto_id=prod.id,
-                        tipo=schemas.MovementType.entrada,
-                        cantidad=stock_inicial,
-                        costo_unitario=costo,
-                        motivo="carga_masiva",
-                        referencia="stock_inicial",
-                        observacion=""
-                    )
-                    create_movement(db, payload)
-                except ValueError as e:
-                    errors.append(f"Fila {idx+2}: producto '{nombre}' creado pero no se pudo aplicar stock_inicial ({e}).")
-
+            create_producto(db, producto_data)
             created_count += 1
-
         except Exception as e:
-            errors.append(f"Fila {idx+2}: error creando producto: {e}")
+            errors.append(f"Error creando producto en fila {index + 2}: {e}")
 
     return {
         "success": True,
-        "message": f"Bulk product upload finished. {created_count} products created." + (f" Errors: {errors}" if errors else ""),
+        "message": f"Carge masivo finalizado. {created_count} productos creados."   + (f" Error: {len(errors)} registros con problemas: {errors}" if errors else ""),
         "created_records": created_count,
         "errors": errors
     }
