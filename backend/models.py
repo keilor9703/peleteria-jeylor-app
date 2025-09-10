@@ -1,7 +1,9 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean, Enum, Text, func
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
+
+import enum
 
 Base = declarative_base()
 
@@ -25,7 +27,30 @@ class Producto(Base):
     costo = Column(Float, default=0.0)
     es_servicio = Column(Boolean, default=False)
     unidad_medida = Column(String, default="UND")
+    stock_actual = Column(Float, default=0.0) # New field for current stock
+    stock_minimo = Column(Float, default=0.0) # New field for minimum
+    
+class MovementType(str, enum.Enum):
+    ENTRADA = "entrada"
+    SALIDA = "salida"
+    AJUSTE = "ajuste"
 
+class InventoryMovement(Base):
+    __tablename__ = "inventory_movements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    producto_id = Column(Integer, ForeignKey("productos.id"), nullable=False)
+    tipo = Column(Enum(MovementType), nullable=False)
+    cantidad = Column(Float, nullable=False)
+    costo_unitario = Column(Float, default=0.0)   # por si más adelante calculas valorización
+    motivo = Column(String(100), default="")
+    referencia = Column(String(100), default="")  # ej: venta #, orden #
+    observacion = Column(Text, default="")
+    created_at = Column(DateTime, server_default=func.now())
+
+    # producto = relationship("Producto", backref="movimientos")
+    producto = relationship("Producto", lazy="joined")  # 👈
+    
 class DetalleVenta(Base):
     __tablename__ = "detalles_venta"
     id = Column(Integer, primary_key=True, index=True)

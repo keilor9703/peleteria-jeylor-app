@@ -1,5 +1,5 @@
 
-from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile
+from fastapi import FastAPI, Depends, HTTPException, Response, status, File, UploadFile, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session, joinedload
@@ -8,13 +8,20 @@ from datetime import date, datetime, timedelta
 from jose import JWTError, jwt
 import psycopg2
 import crud, models, schemas
-from database import SessionLocal, engine
+from database import SessionLocal, engine,run_migrations
 from models import Base
+
+from fastapi.responses import StreamingResponse
+
+from io import BytesIO
+import pandas as pd
+from fastapi.responses import StreamingResponse
+
 
 
 
 models.Base.metadata.create_all(bind=engine)
-
+run_migrations()
 
 
 app = FastAPI()
@@ -75,7 +82,12 @@ def initialize_default_data(db: Session):
         {"name": "Gestion Modulos", "description": "Módulo para la administración de módulos.", "frontend_path": "/admin/modules"},
         {"name": "Órdenes de Trabajo", "description": "Módulo para la gestión de órdenes de trabajo.", "frontend_path": "/ordenes-trabajo"},
         {"name": "Panel del Operador", "description": "Panel de productividad y gestión para operadores.", "frontend_path": "/panel-operador"},
+
+        # 👇 NUEVO
+        {"name": "Inventarios", "description": "Módulo para movimientos y alertas de stock.", "frontend_path": "/inventario"},
+        {"name": "Reportes inventario", "description": "Módulo para movimientos y alertas de stock.", "frontend_path": "/reportes-inventario"},
     ]
+    # (deja el resto de tu función igual: creación de roles, módulos por rol, etc.)
 
     # Ensure Admin Role exists
     admin_role = crud.get_role_by_name(db, name="Admin")
@@ -145,6 +157,92 @@ def get_current_admin_user(current_user: schemas.User = Depends(get_current_user
     if current_user.role.name != "Admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
     return current_user
+
+
+
+
+# ---------- Kardex ----------
+@app.get("/inventario/kardex/{producto_id}", response_model=schemas.KardexResponse)
+def kardex_producto(
+    producto_id: int,
+    start_date: Optional[str] = Query(None, description="YYYY-MM-DD"),
+    end_date: Optional[str] = Query(None, description="YYYY-MM-DD"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    sd = datetime.strptime(start_date, "%Y-%m-%d") if start_date else None
+    ed = datetime.strptime(end_date, "%Y-%m-%d") if end_date else None
+    return crud.get_kardex_promedio_ponderado(db, producto_id, sd, ed)
+
+@app.get("/inventario/kardex/{producto_id}/export")
+def kardex_export_csv(
+    producto_id: int,
+    start_date: Optional[str] = Query(None, description="YYYY-MM-DD"),
+    end_date: Optional[str] = Query(None, description="YYYY-MM-DD"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    sd = datetime.strptime(start_date, "%Y-%m-%d") if start_date else None
+    ed = datetime.strptime(end_date, "%Y-%m-%d") if end_date else None
+    rep = crud.get_kardex_promedio_ponderado(db, producto_id, sd, ed)
+
+    # CSV simple
+    lines = ["fecha,tipo,cantidad,costo_unit,referencia,saldo_cant,saldo_costo,saldo_valor"]
+    for it in rep.items:
+        lines.append(
+            f"{it.fecha.isoformat()},{it.tipo},{it.cantidad},{it.costo_unitario},{it.referencia or ''},{it.saldo_cantidad},{it.saldo_costo_unitario},{it.saldo_valor}"
+        )
+    csv_data = "\n".join(lines)
+    headers = {
+        "Content-Disposition": f'attachment; filename="kardex_{producto_id}.csv"',
+        "Content-Type": "text/csv; charset=utf-8",
+    }
+    return Response(content=csv_data, headers=headers)
+
+# ---------- Inventario actual ----------
+@app.get("/reportes/inventario-actual", response_model=schemas.InventarioSnapshot)
+def inventario_actual(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    return crud.get_inventario_actual(db)
+
+@app.get("/reportes/inventario-actual/export")
+def inventario_actual_export(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    snap = crud.get_inventario_actual(db)
+    lines = ["id,nombre,es_servicio,unidad,stock_actual,costo,precio,valor_costo,valor_venta"]
+    for it in snap.items:
+        lines.append(
+            f"{it.id},{it.nombre},{1 if it.es_servicio else 0},{it.unidad_medida or ''},{it.stock_actual},{it.costo},{it.precio},{it.valor_costo},{it.valor_venta}"
+        )
+    # totales como última línea
+    lines.append(f"TOTALS,,,,,,,{snap.total_valor_costo},{snap.total_valor_venta}")
+    csv_data = "\n".join(lines)
+    headers = {
+        "Content-Disposition": 'attachment; filename="inventario_actual.csv"',
+        "Content-Type": "text/csv; charset=utf-8",
+    }
+    return Response(content=csv_data, headers=headers)
+
+# ---------- Rotación ----------
+@app.get("/reportes/rotacion", response_model=schemas.ReporteRotacion)
+def reporte_rotacion(
+    start_date: Optional[str] = Query(None, description="YYYY-MM-DD"),
+    end_date: Optional[str]   = Query(None, description="YYYY-MM-DD"),
+    limit: int = Query(10, ge=1, le=100),
+    incluir_servicios: bool = Query(False),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    sd = datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else None
+    ed = datetime.strptime(end_date, "%Y-%m-%d").date() if end_date else None
+    return crud.get_rotacion_productos(db, sd, ed, limit=limit, incluir_servicios=incluir_servicios)
+
+
+
 
 # --- Endpoints de Autenticación ---
 @app.post("/token", response_model=schemas.Token)
@@ -332,15 +430,80 @@ def delete_producto(producto_id: int, db: Session = Depends(get_db), current_use
         raise HTTPException(status_code=404, detail="Producto not found")
     return {"message": "Producto deleted successfully"}
 
+
+
+@app.get("/productos/export")
+def exportar_productos(
+    formato: str = Query("csv", pattern="^(csv|xlsx)$"),
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    prods = crud.get_productos(db)
+    rows = []
+    for p in prods:
+        rows.append({
+            "id": p.id,
+            "nombre": p.nombre,
+            "precio": p.precio,
+            "costo": p.costo,
+            "es_servicio": bool(p.es_servicio),
+            "unidad_medida": p.unidad_medida,
+            "stock_minimo": float(p.stock_minimo or 0.0),
+            "stock_actual": float(p.stock_actual or 0.0),
+        })
+
+    df = pd.DataFrame(rows)
+
+    if formato == "csv":
+        csv_bytes = df.to_csv(index=False).encode("utf-8")
+        return Response(
+            content=csv_bytes,
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="productos.csv"'}
+        )
+    else:  # xlsx
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="Productos")
+        output.seek(0)
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": 'attachment; filename="productos.xlsx"'}
+        )
+
+
 # --- Endpoints para Ventas ---
+
+
 @app.post("/ventas/", response_model=schemas.Venta)
-def create_venta(venta: schemas.VentaCreate, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_active_user)):
+def create_venta(
+    venta: schemas.VentaCreate, 
+    db: Session = Depends(get_db), 
+    current_user: schemas.User = Depends(get_current_active_user)
+):
     db_cliente = crud.get_cliente(db, cliente_id=venta.cliente_id)
     if not db_cliente:
         raise HTTPException(status_code=404, detail="Cliente not found")
 
     if not venta.detalles:
         raise HTTPException(status_code=400, detail="Debe proporcionar al menos un producto.")
+
+    # ✅ (opcional pero recomendado) Validar stock disponible ANTES de crear la venta
+    # Evita crear una venta que luego no podrás cumplir
+    for d in venta.detalles:
+        prod = crud.get_producto(db, d.producto_id)
+        if not prod:
+            raise HTTPException(status_code=404, detail=f"Producto {d.producto_id} no existe")
+        if getattr(prod, "es_servicio", False):
+            continue  # los servicios no descuentan inventario
+        # cantidad que vas a descontar
+        cant = d.cantidad
+        if (prod.stock_actual or 0) < cant:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Stock insuficiente para '{prod.nombre}'. En stock: {prod.stock_actual}, requerido: {cant}"
+            )
 
     # Validar cupo de crédito para ventas no pagadas
     if not venta.pagada:
@@ -349,7 +512,6 @@ def create_venta(venta: schemas.VentaCreate, db: Session = Depends(get_db), curr
             for d in venta.detalles
         )
         deuda_actual = crud.get_cliente_deuda(db, venta.cliente_id)
-        
         if (deuda_actual + total_nueva_venta) > db_cliente.cupo_credito:
             cupo_disponible = db_cliente.cupo_credito - deuda_actual
             raise HTTPException(
@@ -357,7 +519,34 @@ def create_venta(venta: schemas.VentaCreate, db: Session = Depends(get_db), curr
                 detail=f"La venta excede el cupo de crédito. Cupo disponible: {cupo_disponible:.2f}"
             )
 
-    return crud.create_venta(db=db, venta=venta)
+    # ✅ Crear la venta en BD
+    db_venta = crud.create_venta(db=db, venta=venta)
+
+    # ✅ Registrar movimientos de inventario (SALIDA) por cada detalle
+    try:
+        for det in db_venta.detalles:
+            # algunos esquemas traen det.producto_id / det.cantidad
+            # aseguramos que no sean servicios
+            prod = crud.get_producto(db, det.producto_id)
+            if getattr(prod, "es_servicio", False):
+                continue
+
+            payload = schemas.InventoryMovementCreate(
+                producto_id=det.producto_id,
+                tipo=schemas.MovementType.salida,
+                cantidad=det.cantidad,
+                costo_unitario=getattr(det, "precio_unitario", 0) or 0.0,  # opcional
+                motivo="venta",
+                referencia=f"venta #{db_venta.id}",
+                observacion=""
+            )
+            crud.create_movement(db, payload)
+    except ValueError as e:
+        # si falla un movimiento puedes decidir revertir la venta (rollback manual)
+        # o solo notificar. Aquí notificamos.
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return db_venta
 
 @app.get("/ventas/", response_model=List[schemas.Venta])
 def read_ventas(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_active_user)):
@@ -399,6 +588,38 @@ def delete_venta(venta_id: int, db: Session = Depends(get_db), current_user: sch
     if db_venta is None:
         raise HTTPException(status_code=404, detail="Venta not found")
     return {"message": "Venta deleted successfully"}
+
+# ENDPOINTS PARA MOVIMIENTOS E INVENTARIO
+@app.post("/inventario/movimientos", response_model=schemas.InventoryMovementOut)
+def crear_movimiento(payload: schemas.InventoryMovementCreate, db: Session = Depends(get_db)):
+    try:
+        mov = crud.create_movement(db, payload)
+        return mov
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/inventario/movimientos", response_model=list[schemas.InventoryMovementOut])
+def listar_movimientos(producto_id: int | None = None, limit: int = 100, db: Session = Depends(get_db)):
+    return crud.list_movements(db, producto_id=producto_id, limit=limit)
+
+@app.get("/inventario/alertas/bajo-stock", response_model=list[schemas.InventoryAlertOut])
+def alertas_bajo_stock(db: Session = Depends(get_db)):
+    prods = crud.get_low_stock(db)
+    return [
+        schemas.InventoryAlertOut(
+            producto_id=p.id, nombre=p.nombre,
+            stock_actual=p.stock_actual or 0,
+            stock_minimo=p.stock_minimo or 0
+        ) for p in prods
+    ]
+
+@app.patch("/productos/{producto_id}/stock-minimo")
+def actualizar_stock_minimo(producto_id: int, body: schemas.ProductoStockUpdate, db: Session = Depends(get_db)):
+    prod = crud.update_producto_stock_minimo(db, producto_id, body.stock_minimo or 0)
+    if not prod:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    return {"ok": True}
+
 
 # --- Endpoints para Pagos ---
 @app.post("/pagos/", response_model=schemas.Pago)
@@ -647,11 +868,55 @@ def enviar_orden_para_revision(orden_id: int, db: Session = Depends(get_db), cur
     return crud.update_orden_trabajo_estado(db, orden_id=orden_id, estado="En revisión")
 
 @ordenes_router.post("/{orden_id}/aprobar", response_model=schemas.OrdenTrabajo)
-def approve_orden_trabajo(orden_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin_user)):
+def approve_orden_trabajo(
+    orden_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    # ✅ Primero aprobamos la orden (tu lógica actual)
     db_orden = crud.aprobar_orden_trabajo(db, orden_id=orden_id, admin_user=current_user)
     if db_orden is None:
         raise HTTPException(status_code=404, detail="Orden no encontrada o no está en estado de revisión")
+
+    # ✅ Después registramos movimientos de inventario (SALIDA) para insumos/productos usados
+    # Suponiendo que db_orden.productos es una lista de items con (producto_id, cantidad)
+    # y que también existen 'servicios' que NO se descuentan del inventario.
+    try:
+        # 1. Validación de stock (recomendado) para todos los productos de la orden
+        for item in getattr(db_orden, "productos", []):
+            prod = crud.get_producto(db, item.producto_id)
+            if not prod:
+                raise HTTPException(status_code=404, detail=f"Producto {item.producto_id} no existe")
+            if getattr(prod, "es_servicio", False):
+                continue
+            if (prod.stock_actual or 0) < item.cantidad:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Stock insuficiente para '{prod.nombre}' en OT #{orden_id}. En stock: {prod.stock_actual}, requerido: {item.cantidad}"
+                )
+
+        # 2. Crear los movimientos SALIDA
+        for item in getattr(db_orden, "productos", []):
+            prod = crud.get_producto(db, item.producto_id)
+            if getattr(prod, "es_servicio", False):
+                continue
+            payload = schemas.InventoryMovementCreate(
+                producto_id=item.producto_id,
+                tipo=schemas.MovementType.salida,
+                cantidad=item.cantidad,
+                costo_unitario=prod.costo if hasattr(prod, "costo") and prod.costo else 0.0,  # opcional
+                motivo="orden_trabajo",
+                referencia=f"OT #{orden_id}",
+                observacion=""
+            )
+            crud.create_movement(db, payload)
+
+    except ValueError as e:
+        # si falla un movimiento puedes decidir revertir la aprobación (depende de tu negocio)
+        raise HTTPException(status_code=400, detail=str(e))
+
     return db_orden
+
 
 @ordenes_router.post("/{orden_id}/rechazar", response_model=schemas.OrdenTrabajo)
 def reject_orden_trabajo(orden_id: int, observaciones: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin_user)):

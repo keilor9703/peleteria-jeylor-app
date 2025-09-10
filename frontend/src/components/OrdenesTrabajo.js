@@ -26,6 +26,13 @@ function TabPanel(props) {
     );
 }
 
+
+const productLabel = (p) => {
+  if (!p) return '';
+  const isService = !!p.es_servicio;
+  const stockTxt = isService ? 'Servicio' : `stock: ${p.stock_actual ?? 0}`;
+  return `${p.nombre} (${stockTxt})`;
+};
 // New component: OrdenTrabajoCard
 const OrdenTrabajoCard = ({ orden, handleEdit, handleOpenDetails, getEstadoChip, handleEnviarRevision, user, handleCloseOrder, handleApprove, handleOpenRejectDialog }) => {
     return (
@@ -326,10 +333,23 @@ const OrdenesTrabajo = ({ user }) => {
         setShowConfirmDialog(true);
     };
 
-    const handleApprove = (id) => {
-        setOrdenAction({ action: 'aprobar', id, message: '¿Estás seguro de que quieres APROBAR esta orden de trabajo? Esta acción registrará la venta y no se puede deshacer.' });
-        setShowConfirmDialog(true);
-    };
+    const handleApprove = async (id) => {
+  // 1) Valida stock
+  const ok = await checkStockForOrder(id);
+  if (!ok) {
+    // Si no hay stock suficiente, NO abrimos el diálogo de confirmación ni aprobamos
+    return;
+  }
+
+  // 2) Si está ok, abrimos el diálogo de confirmación (flujo actual)
+  setOrdenAction({
+    action: 'aprobar',
+    id,
+    message: '¿Estás seguro de que quieres APROBAR esta orden de trabajo? Esta acción registrará la venta y no se puede deshacer.',
+  });
+  setShowConfirmDialog(true);
+};
+
 
     const handleOpenRejectDialog = (orden) => {
         setOrdenToProcess(orden);
@@ -415,6 +435,8 @@ const OrdenesTrabajo = ({ user }) => {
         setShowDetailDialog(false);
     };
 
+
+
     const getEstadoChip = (estado) => {
         const chipProps = {
             'Borrador': { label: 'Borrador', color: 'default' },
@@ -426,6 +448,56 @@ const OrdenesTrabajo = ({ user }) => {
         const props = chipProps[estado] || { label: 'Desconocido', color: 'default' };
         return <Chip label={props.label} color={props.color} size="small" />;
     };
+
+
+    // Trae los detalles completos de la OT
+const fetchOrdenDetalle = async (ordenId) => {
+  const res = await apiClient.get(`/ordenes-trabajo/${ordenId}`);
+  return res.data;
+};
+
+// Verifica stock antes de aprobar
+const checkStockForOrder = async (ordenId) => {
+  try {
+    const orden = await fetchOrdenDetalle(ordenId);
+    const faltantes = [];
+
+    // orden.productos es un array con { producto, cantidad, precio_unitario, ... }
+    (orden.productos || []).forEach((linea) => {
+      const prod = linea.producto;
+      if (!prod) return;
+
+      // Solo productos (no servicios) consumen stock
+      const esServicio = !!prod.es_servicio;
+      if (esServicio) return;
+
+      const disponible = Number(prod.stock_actual ?? 0);
+      const requerido = Number(linea.cantidad ?? 0);
+
+      if (disponible < requerido) {
+        faltantes.push({
+          nombre: prod.nombre,
+          requerido,
+          disponible,
+        });
+      }
+    });
+
+    if (faltantes.length) {
+      // Muestra todos los faltantes y bloquea la aprobación
+      faltantes.forEach((f) =>
+        toast.error(`Stock insuficiente para "${f.nombre}": requiere ${f.requerido}, disponible ${f.disponible}`)
+      );
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    toast.error(err?.response?.data?.detail || 'No fue posible validar el stock de la orden.');
+    return false;
+  }
+};
+
 
     return (
         <Box sx={{ width: '100%' }}>
@@ -470,7 +542,8 @@ const OrdenesTrabajo = ({ user }) => {
                                 <Grid item xs={6}>
                                     <Autocomplete
                                         options={productos.filter(prod => !prod.es_servicio)}
-                                        getOptionLabel={(option) => option.nombre}
+                                        // getOptionLabel={(option) => option.nombre}
+                                        getOptionLabel={productLabel}
                                         value={p.producto}
                                         onChange={(e, newValue) => {
                                             handleProductoChange(p.id, 'producto', newValue);

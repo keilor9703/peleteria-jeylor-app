@@ -6,7 +6,12 @@ import { ShoppingCart, People, Inventory, Assessment, AdminPanelSettings, Expand
 import { useTheme } from '@mui/material/styles';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { Route, Routes, Link, useNavigate } from 'react-router-dom';
+// import { Route, Routes, Link, useNavigate } from 'react-router-dom';
+
+import { Route, Routes, Link, useNavigate, Navigate } from 'react-router-dom';
+import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
+import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
+
 import apiClient from './api';
 import getAppTheme from './theme';
 
@@ -23,6 +28,10 @@ import OrdenesTrabajo from './components/OrdenesTrabajo';
 import Notifications from './components/Notifications';
 import PanelOperador from './components/PanelOperador';
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import InventarioPage from './components/InventoryPage'; // 👈 nuevo
+import InventoryReports from './components/InventoryReports';
+
+
 
 
 
@@ -155,6 +164,11 @@ function App() {
     { path: '/ordenes-trabajo', text: 'Órdenes de Trabajo', icon: <Assignment />, color: 'teal' },
     { path: '/clientes', text: 'Clientes', icon: <People />, color: 'blue' },
     { path: '/productos', text: 'Productos', icon: <Inventory />, color: 'green' },
+
+    // { path: '/inventario', text: 'Inventarios', icon: <Inventory />, color: 'green' },
+    { path: '/inventario', text: 'Inventarios', icon: <Inventory2OutlinedIcon />, color: 'brown' },
+    //{ path: '/reportes-inventario', text: 'Reportes inventario', icon: <AssessmentOutlinedIcon />, color: 'brown' },
+
     { path: '/reportes', text: 'Reportes', icon: <Assessment />, color: 'red' },
   ];
 
@@ -307,6 +321,8 @@ function App() {
                         <Route path="/ventas" element={<Ventas />} />
                         <Route path="/clientes" element={<Clientes />} />
                         <Route path="/productos" element={<Productos />} />
+                        <Route path="/inventario" element={<InventarioPage />} /> {/* 👈 nuevo */}
+                        <Route path="/reportes-inventario" element={<InventoryReports />} />
                         <Route path="/reportes" element={<Reportes />} />
                         <Route path="/ordenes-trabajo" element={<OrdenesTrabajo user={user} />} />
                         {hasAccess('/panel-operador') && <Route path="/panel-operador" element={<PanelOperador />} />}

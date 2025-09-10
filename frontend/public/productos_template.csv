@@ -1,2 +1,5 @@
-nombre,precio,costo,es_servicio,unidad_medida
-Ejemplo Producto,10.50,5.25,FALSE,UND
+nombre,precio,costo,es_servicio,unidad_medida,stock_minimo,stock_inicial
+Cinta de cuero 1",12000,8000,false,UND,10,50
+Pegante industrial,18000,12000,false,UND,5,0
+Servicio reparación tacón,25000,0,true,UND,0,0
+Hilo nylon 0.8mm,7000,4500,false,UND,20,100

@@ -81,87 +81,119 @@ const ClienteForm = ({ onClienteAdded, clienteToEdit, onClienteUpdated }) => {
         });
     };
 
-    return (
-        <Box component="form" onSubmit={handleSubmit} sx={{ mb: 4 }}>
-            <Typography variant="h6" gutterBottom color="text.primary">
-                {clienteToEdit ? 'Editar Cliente' : 'Agregar Nuevo Cliente'}
-            </Typography>
-            <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                    <TextField
-                        label="Nombre"
-                        value={nombre}
-                        onChange={e => setNombre(e.target.value)}
-                        fullWidth
-                        required
-                    />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                    <TextField
-                        label="Cédula"
-                        value={cedula}
-                        onChange={e => setCedula(e.target.value)}
-                        fullWidth
-                    />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                    <TextField
-                        label="Teléfono"
-                        value={telefono}
-                        onChange={e => setTelefono(e.target.value)}
-                        fullWidth
-                    />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                    <TextField
-                        label="Dirección"
-                        value={direccion}
-                        onChange={e => setDireccion(e.target.value)}
-                        fullWidth
-                    />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                    <TextField
-                        label="Cupo de Crédito"
-                        value={cupoCredito}
-                        onChange={e => setCupoCredito(e.target.value.replace(/[^0-9.]/g, ''))}
-                        fullWidth
-                        InputProps={{
-                            startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                        }}
-                    />
-                </Grid>
-                <Grid item xs={12}>
-                    <Button type="submit" variant="contained">
-                        {clienteToEdit ? 'Actualizar Cliente' : 'Agregar Cliente'}
-                    </Button>
-                </Grid>
-            </Grid>
 
-            <Accordion sx={accordionStyles}>
-            <AccordionSummary
-                expandIcon={<ExpandMore />}
-                sx={{
-                backgroundColor: '#f5f5f5',
-                borderBottom: '1px solid #ddd',
-                borderTopLeftRadius: 8,
-                borderTopRightRadius: 8,
-                minHeight: 48,
-                '& .MuiAccordionSummary-content': { margin: 0 }
-                }}
-            >
-                <Typography variant="subtitle1" fontWeight="bold" color="text.primary">
-                Carga Masiva de Clientes
-                </Typography>
-            </AccordionSummary>
+return (
+  <Box component="form" onSubmit={handleSubmit} sx={{ mb: 4 }}>
+    {/* ⬇️ Acordeón para Nuevo Cliente */}
+    <Accordion
+      
+      sx={{
+        mb: 2,
+        borderRadius: 2,
+        boxShadow: 2,
+        overflow: "hidden",
+        "&:before": { display: "none" }
+      }}
+    >
+      <AccordionSummary
+        expandIcon={<ExpandMore />}
+        sx={{ minHeight: 48, "& .MuiAccordionSummary-content": { margin: 0 } }}
+      >
+        <Typography variant="subtitle1" fontWeight="bold" color="text.primary">
+          {clienteToEdit ? "Editar Cliente" : "Agregar Nuevo Cliente"}
+        </Typography>
+      </AccordionSummary>
 
-            <AccordionDetails sx={{ backgroundColor: '#fff', borderRadius: 2 }}>
-                <BulkUpload uploadType="clientes" onUploadSuccess={fetchClientes} />
-            </AccordionDetails>
-            </Accordion>
+      <AccordionDetails>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="Nombre"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              fullWidth
+              required
+            />
+          </Grid>
 
-        </Box>
-    );
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="Cédula"
+              value={cedula}
+              onChange={(e) => setCedula(e.target.value)}
+              fullWidth
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="Teléfono"
+              value={telefono}
+              onChange={(e) => setTelefono(e.target.value)}
+              fullWidth
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="Dirección"
+              value={direccion}
+              onChange={(e) => setDireccion(e.target.value)}
+              fullWidth
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="Cupo de Crédito"
+              value={cupoCredito}
+              onChange={(e) =>
+                setCupoCredito(e.target.value.replace(/[^0-9.]/g, ""))
+              }
+              fullWidth
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">$</InputAdornment>
+                )
+              }}
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <Button type="submit" variant="contained">
+              {clienteToEdit ? "Actualizar Cliente" : "Agregar Cliente"}
+            </Button>
+          </Grid>
+        </Grid>
+      </AccordionDetails>
+    </Accordion>
+
+    {/* ⬇️ Acordeón para carga masiva */}
+    <Accordion
+      sx={{
+        mt: 1,
+        borderRadius: 2,
+        boxShadow: 2,
+        overflow: "hidden",
+        "&:before": { display: "none" }
+      }}
+    >
+      <AccordionSummary
+        expandIcon={<ExpandMore />}
+        sx={{ minHeight: 48, "& .MuiAccordionSummary-content": { margin: 0 } }}
+      >
+        <Typography variant="subtitle1" fontWeight="bold" color="text.primary">
+          Carga Masiva de Clientes
+        </Typography>
+      </AccordionSummary>
+
+      <AccordionDetails>
+        <BulkUpload uploadType="clientes" onUploadSuccess={fetchClientes} />
+      </AccordionDetails>
+    </Accordion>
+  </Box>
+);
+
 };
 
 export default ClienteForm;

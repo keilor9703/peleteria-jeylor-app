@@ -29,6 +29,15 @@ function TabPanel(props) {
         </div>
     );
 }
+// Muestra "eva — Stock: 32" (o "Servicio" si es un servicio)
+const productLabel = (p) => {
+  if (!p) return '';
+  const isService = !!p.es_servicio;
+  const stockTxt = isService ? 'Servicio' : `stock: ${p.stock_actual ?? 0}`;
+  return `${p.nombre} (${stockTxt})`;
+};
+
+
 
 // Helper function for a11y props
 function a11yProps(index) {
@@ -273,16 +282,36 @@ const Ventas = () => {
                             <Typography variant="subtitle1" gutterBottom mb={2}>Detalles de la Venta</Typography>
                             {saleDetails.map((detail) => (
                                 <Box key={detail.id} sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 2, flexWrap: 'wrap' }}>
-                                    <Autocomplete
-                                        options={productos}
-                                        getOptionLabel={(option) => option.nombre}
-                                        value={detail.producto}
-                                        onChange={(event, newValue) => {
-                                            handleSaleDetailChange(detail.id, 'producto', newValue);
-                                            handleSaleDetailChange(detail.id, 'precioUnitario', newValue ? newValue.precio : 0);
-                                        }}
-                                        renderInput={(params) => <TextField {...params} label="Producto" sx={{ flexGrow: 1, minWidth: '250px' }} />}
+                                   <Autocomplete
+                                    options={productos}
+                                    // 👇 etiqueta que verá el usuario en el input (y cuando está seleccionado)
+                                    getOptionLabel={productLabel}
+                                    value={detail.producto}
+                                    onChange={(event, newValue) => {
+                                        handleSaleDetailChange(detail.id, 'producto', newValue);
+                                        handleSaleDetailChange(detail.id, 'precioUnitario', newValue ? newValue.precio : 0);
+                                    }}
+                                    // 👇 personalizamos cada fila del dropdown para mostrar nombre + stock
+                                    renderOption={(props, option) => (
+                                        <li {...props} key={option.id}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2 }}>
+                                            <span>{option.nombre}</span>
+                                            <Typography variant="caption" color="text.secondary">
+                                            {option.es_servicio ? 'Servicio' : `Stock: ${option.stock_actual ?? 0}`}
+                                            </Typography>
+                                        </Box>
+                                        </li>
+                                    )}
+                                    renderInput={(params) => (
+                                        <TextField
+                                        {...params}
+                                        label="Producto"
+                                        sx={{ flexGrow: 1, minWidth: '250px' }}
+                                        placeholder="Busca por nombre…"
+                                        />
+                                    )}
                                     />
+
                                     <TextField
                                         type="number"
                                         label="Cantidad"

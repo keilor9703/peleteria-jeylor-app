@@ -66,4 +66,18 @@ export const uploadFile = async (uploadType, file) => {
     }
 };
 
+
+export const fetchMovements = (params = {}) =>
+  apiClient.get('/inventario/movimientos', { params });
+
+export const createMovement = (data) =>
+  apiClient.post('/inventario/movimientos', data);
+
+export const fetchLowStockAlerts = () =>
+  apiClient.get('/inventario/alertas/bajo-stock');
+
+export const updateProductoStockMinimo = (productoId, minimo) =>
+  apiClient.patch(`/productos/${productoId}/stock-minimo`, { stock_minimo: minimo });
+
+
 export default apiClient;

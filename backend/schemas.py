@@ -1,25 +1,128 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 import datetime
+from enum import Enum
 
-# Esquemas para Producto
+
+# ---------- Kardex ----------
+class KardexItem(BaseModel):
+    fecha: datetime.datetime
+    tipo: str           # 'entrada' | 'salida' | 'ajuste'
+    cantidad: float
+    costo_unitario: float
+    referencia: Optional[str] = None
+    saldo_cantidad: float
+    saldo_costo_unitario: float
+    saldo_valor: float
+
+    class Config:
+        from_attributes = True
+
+class KardexResponse(BaseModel):
+    producto_id: int
+    producto_nombre: str
+    items: List[KardexItem]
+
+# ---------- Inventario actual ----------
+class InventarioItem(BaseModel):
+    id: int
+    nombre: str
+    es_servicio: bool
+    unidad_medida: Optional[str]
+    stock_actual: float
+    costo: float
+    precio: float
+    valor_costo: float        # stock_actual * costo
+    valor_venta: float        # stock_actual * precio
+
+    class Config:
+        from_attributes = True
+
+class InventarioSnapshot(BaseModel):
+    items: List[InventarioItem]
+    total_valor_costo: float
+    total_valor_venta: float
+
+# ---------- Rotación (más vendidos / más lentos) ----------
+class ProductoRotacionItem(BaseModel):
+    producto_id: int
+    nombre: str
+    es_servicio: bool
+    total_cantidad_vendida: float
+    total_ingresos: float     # suma (cantidad * precio_unitario)
+
+class ReporteRotacion(BaseModel):
+    start_date: Optional[datetime.date] = None
+    end_date: Optional[datetime.date] = None
+    top: List[ProductoRotacionItem]
+    slow: List[ProductoRotacionItem]
+
+
+
+# =========================
+# Producto / Inventario
+# =========================
 class ProductoBase(BaseModel):
     nombre: str
     precio: float
     costo: float = 0.0
     es_servicio: bool = False
     unidad_medida: Optional[str] = "UND"
+    # Inventario
+    stock_minimo: float = 0.0  # nuevo en fase 1 (editable)
+    # stock_actual NO se edita aquí; se mueve con movimientos
 
 class ProductoCreate(ProductoBase):
     pass
 
 class Producto(ProductoBase):
     id: int
+    stock_actual: float = 0.0  # solo lectura hacia el front (lo mantiene el backend con movimientos)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Esquemas para Cliente
+class MovementType(str, Enum):
+    entrada = "entrada"
+    salida = "salida"
+    ajuste = "ajuste"
+
+class InventoryMovementCreate(BaseModel):
+    producto_id: int
+    tipo: MovementType
+    cantidad: float
+    costo_unitario: float = 0.0
+    motivo: Optional[str] = ""
+    referencia: Optional[str] = ""
+    observacion: Optional[str] = ""
+
+class InventoryMovementOut(BaseModel):
+    id: int
+    producto_id: int
+    producto: Optional[Producto] = None      # 👈 para traer el nombre
+    tipo: MovementType
+    cantidad: float
+    costo_unitario: float                    # 👈 antes tenías "floatPago"
+    motivo: Optional[str] = None
+    referencia: Optional[str] = None
+    observacion: Optional[str] = None
+    created_at: datetime.datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class InventoryAlertOut(BaseModel):
+    producto_id: int
+    nombre: str
+    stock_actual: float
+    stock_minimo: float
+
+class ProductoStockUpdate(BaseModel):
+    stock_minimo: Optional[float] = None
+
+
+# =========================
+# Cliente
+# =========================
 class ClienteBase(BaseModel):
     nombre: str
     cedula: Optional[str] = None
@@ -33,13 +136,15 @@ class ClienteCreate(ClienteBase):
 class Cliente(ClienteBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ClienteDetails(Cliente):
     deuda_actual: float
 
-# Esquemas para Pago
+
+# =========================
+# Pago
+# =========================
 class PagoBase(BaseModel):
     venta_id: int
     monto: float
@@ -56,10 +161,12 @@ class Pago(PagoBase):
     id: int
     fecha: datetime.datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Esquemas para Modulo
+
+# =========================
+# Módulos / Roles / Usuarios
+# =========================
 class ModuloBase(BaseModel):
     name: str
     description: Optional[str] = None
@@ -71,10 +178,8 @@ class ModuloCreate(ModuloBase):
 class Modulo(ModuloBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Esquemas para Rol
 class RoleBase(BaseModel):
     name: str
 
@@ -83,12 +188,10 @@ class RoleCreate(RoleBase):
 
 class Role(RoleBase):
     id: int
-    modules: List[Modulo] = [] # Añadir la lista de módulos
+    modules: List[Modulo] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Esquemas para Usuario
 class UserBase(BaseModel):
     username: str
     role_id: int
@@ -98,11 +201,10 @@ class UserCreate(UserBase):
 
 class User(UserBase):
     id: int
-    role: Role # Relación con el esquema de Role (que ahora incluye módulos)
+    role: Role
 
-    class Config:
-        from_attributes = True
-        exclude = ["hashed_password"] # Excluir la contraseña hasheada al devolver el usuario
+    # hashed_password está en modelo ORM; aquí no se expone
+    model_config = ConfigDict(from_attributes=True)
 
 class Token(BaseModel):
     access_token: str
@@ -111,28 +213,29 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: Optional[str] = None
 
-# Esquemas para DetalleVenta
+
+# =========================
+# Venta
+# =========================
 class DetalleVentaBase(BaseModel):
     producto_id: int
     cantidad: Optional[float]
 
 class DetalleVentaCreate(DetalleVentaBase):
-    precio_unitario: Optional[float] = None # Hacer opcional para la creación
+    precio_unitario: Optional[float] = None  # opcional en creación
 
 class DetalleVenta(DetalleVentaBase):
     id: int
     venta_id: int
     precio_unitario: float
-    producto: Optional[Producto] # To load product details
+    producto: Optional[Producto]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Esquemas para Venta
 class VentaBase(BaseModel):
     cliente_id: int
     detalles: List[DetalleVentaCreate]
-    pagada: bool = True # Keep pagada for initial creation
+    pagada: bool = True
 
 class VentaCreate(VentaBase):
     pass
@@ -145,13 +248,15 @@ class Venta(VentaBase):
     estado_pago: str
     cliente_id: Optional[int]
     cliente: Optional[Cliente]
-    detalles: List[DetalleVenta] = [] # List of sale details
+    detalles: List[DetalleVenta] = []
     pagos: List[Pago] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Nuevos esquemas para Reportes
+
+# =========================
+# Reportes
+# =========================
 class VentasSummary(BaseModel):
     total_pagado: float
     total_pendiente: float
@@ -164,7 +269,6 @@ class ClienteCuentasPorCobrar(BaseModel):
     monto_pendiente: float
     ventas_pendientes: List[Venta] = []
 
-# Esquemas para Historial de Cliente
 class VentaHistoryItem(BaseModel):
     id: int
     detalles: List[DetalleVenta] = []
@@ -172,10 +276,9 @@ class VentaHistoryItem(BaseModel):
     fecha: datetime.datetime
     monto_pagado: float
     estado_pago: str
-    pagos: List[Pago] = [] # Incluir pagos específicos de esta venta
+    pagos: List[Pago] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ClienteHistory(BaseModel):
     cliente: Cliente
@@ -184,19 +287,16 @@ class ClienteHistory(BaseModel):
     total_pagado_general: float
     total_ventas_general: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Nuevos esquemas para Reportes Detallados
 class ProductoVendido(BaseModel):
     product_id: int
     product_name: str
     total_quantity_sold: float
-    es_servicio: bool # Añadir para poder filtrar en el frontend
+    es_servicio: bool
     total_revenue: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ReporteProductosVendidos(BaseModel):
     productos: List[ProductoVendido]
@@ -207,16 +307,14 @@ class ClienteComprador(BaseModel):
     client_name: str
     total_purchase_amount: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ClienteDeudor(BaseModel):
     client_id: int
     client_name: str
     total_debt_amount: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ProductoRentabilidad(BaseModel):
     product_id: int
@@ -227,9 +325,10 @@ class ProductoRentabilidad(BaseModel):
     net_profit: float
     profit_margin: float
 
-# --- Esquemas para Órdenes de Trabajo y Productividad ---
 
-# Esquema para Evidencia
+# =========================
+# Órdenes de Trabajo / Productividad
+# =========================
 class EvidenciaBase(BaseModel):
     file_path: str
 
@@ -241,10 +340,8 @@ class Evidencia(EvidenciaBase):
     orden_id: int
     uploaded_at: datetime.datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Esquema para Productos en una Orden de Trabajo
 class OrdenProductoBase(BaseModel):
     producto_id: int
     cantidad: float
@@ -258,10 +355,8 @@ class OrdenProducto(OrdenProductoBase):
     orden_id: int
     producto: Producto
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Esquema para Servicios en una Orden de Trabajo
 class OrdenServicioBase(BaseModel):
     servicio_id: int
     cantidad: float
@@ -273,18 +368,15 @@ class OrdenServicioCreate(OrdenServicioBase):
 class OrdenServicio(OrdenServicioBase):
     id: int
     orden_id: int
-    servicio: Producto # Un servicio es un producto
+    servicio: Producto
     cantidad: Optional[float]
 
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        from_attributes = True
-
-# Esquema para Órdenes de Trabajo
 class OrdenTrabajoBase(BaseModel):
     cliente_id: int
     total: float
-    operador_id: Optional[int] = None # Añadido para permitir la modificación del operador
+    operador_id: Optional[int] = None
 
 class OrdenTrabajoCreate(OrdenTrabajoBase):
     productos: List[OrdenProductoCreate] = []
@@ -296,7 +388,7 @@ class OrdenTrabajoUpdate(BaseModel):
 
 class OrdenTrabajoClose(BaseModel):
     was_paid: bool
-    payment_type: Optional[str] = None # 'total' or 'partial'
+    payment_type: Optional[str] = None  # 'total' | 'partial'
     paid_amount: Optional[float] = None
 
 class OrdenTrabajo(OrdenTrabajoBase):
@@ -313,10 +405,8 @@ class OrdenTrabajo(OrdenTrabajoBase):
     servicios: List[OrdenServicio] = []
     evidencias: List[Evidencia] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Esquema para Notificaciones
 class NotificacionBase(BaseModel):
     usuario_id: int
     mensaje: str
@@ -330,10 +420,8 @@ class Notificacion(NotificacionBase):
     leido: bool
     fecha_creacion: datetime.datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Esquema para Registro de Productividad
 class RegistroProductividadBase(BaseModel):
     operador_id: int
     orden_id: int
@@ -349,10 +437,8 @@ class RegistroProductividad(RegistroProductividadBase):
     fecha: datetime.datetime
     servicio: Producto
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Esquemas para Reporte de Productividad
 class ProductividadOperadorDetalle(BaseModel):
     orden_id: int
     servicio_nombre: str
@@ -370,8 +456,9 @@ class ReporteProductividad(BaseModel):
     reporte: List[ProductividadOperador] = []
 
 
-# --- Esquemas para el Panel del Operador ---
-
+# =========================
+# Panel Operador
+# =========================
 class PanelOrdenPendiente(BaseModel):
     id: int
     cliente_id: int
@@ -385,8 +472,7 @@ class PanelOrdenPendiente(BaseModel):
     productos: List[OrdenProducto] = []
     servicios: List[OrdenServicio] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class PanelProductividadDataPoint(BaseModel):
     name: str
@@ -406,16 +492,21 @@ class PanelHistorialItem(BaseModel):
     total: float
     estado_pago_venta: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Esquemas para Carga Masiva desde Excel
+
+# =========================
+# Carga Masiva
+# =========================
 class ProductoExcel(BaseModel):
     nombre: str
     precio: float
     costo: float = 0.0
     es_servicio: bool = False
     unidad_medida: Optional[str] = "UND"
+    stock_minimo: float = 0.0
+    stock_inicial: float = 0.0   # 👈 nuevo campo opcional
+
 
 class ClienteExcel(BaseModel):
     nombre: str

@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload,selectinload
 from sqlalchemy import func
 from typing import Optional, List, IO
 from datetime import date, timedelta, datetime
@@ -7,7 +7,176 @@ import models, schemas
 import pandas as pd
 from fastapi import HTTPException
 
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+
+# ---------- Kardex (Promedio Ponderado) ----------
+def get_kardex_promedio_ponderado(
+    db: Session,
+    producto_id: int,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+) -> schemas.KardexResponse:
+    prod = db.query(models.Producto).filter(models.Producto.id == producto_id).first()
+    if not prod:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+
+    q = db.query(models.InventoryMovement).filter(models.InventoryMovement.producto_id == producto_id)
+    if start_date:
+        q = q.filter(models.InventoryMovement.created_at >= start_date)
+    if end_date:
+        q = q.filter(models.InventoryMovement.created_at <= end_date)
+
+    movimientos = q.order_by(models.InventoryMovement.created_at.asc(), models.InventoryMovement.id.asc()).all()
+
+    saldo_cant = 0.0
+    saldo_valor = 0.0
+    saldo_costo_unit = 0.0
+
+    items: List[schemas.KardexItem] = []
+    for m in movimientos:
+        tipo = m.tipo.value if hasattr(m.tipo, "value") else str(m.tipo)
+        cant = float(m.cantidad or 0.0)
+        costo_u = float(m.costo_unitario or 0.0)
+
+        if tipo == "entrada" or (tipo == "ajuste" and cant > 0):
+            # Entrada: aumenta stock y valor al costo de la entrada
+            entrada_valor = cant * costo_u
+            saldo_valor = saldo_valor + entrada_valor
+            saldo_cant = saldo_cant + cant
+            saldo_costo_unit = (saldo_valor / saldo_cant) if saldo_cant > 0 else 0.0
+        else:
+            # Salida: descuenta al costo promedio actual
+            salida_valor = cant * saldo_costo_unit
+            saldo_valor = max(0.0, saldo_valor - salida_valor)
+            saldo_cant = max(0.0, saldo_cant - cant)
+            saldo_costo_unit = (saldo_valor / saldo_cant) if saldo_cant > 0 else 0.0
+
+        items.append(
+            schemas.KardexItem(
+                fecha=m.created_at,
+                tipo=tipo,
+                cantidad=cant,
+                costo_unitario=costo_u if tipo == "entrada" else saldo_costo_unit,
+                referencia=m.referencia,
+                saldo_cantidad=saldo_cant,
+                saldo_costo_unitario=saldo_costo_unit,
+                saldo_valor=saldo_valor,
+            )
+        )
+
+    return schemas.KardexResponse(
+        producto_id=prod.id,
+        producto_nombre=prod.nombre,
+        items=items,
+    )
+
+# ---------- Inventario actual ----------
+def get_inventario_actual(db: Session) -> schemas.InventarioSnapshot:
+    prods = db.query(models.Producto).all()
+
+    items: List[schemas.InventarioItem] = []
+    total_costo = 0.0
+    total_venta = 0.0
+    for p in prods:
+        stock = float(p.stock_actual or 0.0)
+        costo = float(p.costo or 0.0)
+        precio = float(p.precio or 0.0)
+        valor_costo = stock * costo
+        valor_venta = stock * precio
+        total_costo += valor_costo
+        total_venta += valor_venta
+
+        items.append(
+            schemas.InventarioItem(
+                id=p.id,
+                nombre=p.nombre,
+                es_servicio=bool(p.es_servicio),
+                unidad_medida=p.unidad_medida,
+                stock_actual=stock,
+                costo=costo,
+                precio=precio,
+                valor_costo=valor_costo,
+                valor_venta=valor_venta,
+            )
+        )
+
+    return schemas.InventarioSnapshot(
+        items=items,
+        total_valor_costo=total_costo,
+        total_valor_venta=total_venta,
+    )
+
+# ---------- Rotación (ventas por periodo) ----------
+def _ventas_agrupadas_por_producto(
+    db: Session,
+    start_date: Optional[date],
+    end_date: Optional[date],
+    incluir_servicios: bool = False,
+):
+    # join DetalleVenta -> Venta (para filtrar por fecha) -> Producto
+    q = (
+        db.query(
+            models.Producto.id.label("producto_id"),
+            models.Producto.nombre.label("nombre"),
+            models.Producto.es_servicio.label("es_servicio"),
+            func.coalesce(func.sum(models.DetalleVenta.cantidad), 0).label("total_cantidad"),
+            func.coalesce(func.sum(models.DetalleVenta.cantidad * models.DetalleVenta.precio_unitario), 0).label("total_ingresos"),
+        )
+        .join(models.DetalleVenta, models.DetalleVenta.producto_id == models.Producto.id)
+        .join(models.Venta, models.DetalleVenta.venta_id == models.Venta.id)
+    )
+
+    if start_date:
+        q = q.filter(models.Venta.fecha >= datetime.combine(start_date, datetime.min.time()))
+    if end_date:
+        q = q.filter(models.Venta.fecha <= datetime.combine(end_date, datetime.max.time()))
+    if not incluir_servicios:
+        q = q.filter(models.Producto.es_servicio == False)  # noqa: E712
+
+    q = q.group_by(models.Producto.id, models.Producto.nombre, models.Producto.es_servicio)
+    return q
+
+def get_rotacion_productos(
+    db: Session,
+    start_date: Optional[date],
+    end_date: Optional[date],
+    limit: int = 10,
+    incluir_servicios: bool = False,
+) -> schemas.ReporteRotacion:
+    q = _ventas_agrupadas_por_producto(db, start_date, end_date, incluir_servicios)
+
+    # Top vendidos (por cantidad)
+    top_rows = q.order_by(func.coalesce(func.sum(models.DetalleVenta.cantidad), 0).desc()).limit(limit).all()
+
+    # Más lentos: por cantidad ASC (pero >0 para no listar los que no vendieron nada)
+    slow_rows = (
+        q.having(func.coalesce(func.sum(models.DetalleVenta.cantidad), 0) > 0)
+         .order_by(func.coalesce(func.sum(models.DetalleVenta.cantidad), 0).asc())
+         .limit(limit)
+         .all()
+    )
+
+    def map_row(r) -> schemas.ProductoRotacionItem:
+        return schemas.ProductoRotacionItem(
+            producto_id=r.producto_id,
+            nombre=r.nombre,
+            es_servicio=bool(r.es_servicio),
+            total_cantidad_vendida=float(r.total_cantidad or 0.0),
+            total_ingresos=float(r.total_ingresos or 0.0),
+        )
+
+    return schemas.ReporteRotacion(
+        start_date=start_date,
+        end_date=end_date,
+        top=[map_row(r) for r in top_rows],
+        slow=[map_row(r) for r in slow_rows],
+    )
+
+
 
 # --- Funciones de utilidad para contraseñas ---
 def verify_password(plain_password, hashed_password):
@@ -331,6 +500,68 @@ def delete_venta(db: Session, venta_id: int):
         db.commit()
     return db_venta
 
+
+# CRUD para Movimientos de Inventario
+
+def create_movement(db: Session, payload: schemas.InventoryMovementCreate):
+    # Ajusta stock
+    prod = db.query(models.Producto).get(payload.producto_id)
+    if not prod:
+        raise ValueError("Producto no encontrado")
+
+    delta = payload.cantidad
+    if payload.tipo == schemas.MovementType.salida:
+        delta = -abs(payload.cantidad)
+    elif payload.tipo == schemas.MovementType.entrada:
+        delta = abs(payload.cantidad)
+    elif payload.tipo == schemas.MovementType.ajuste:
+        # ajuste puede ser pos/neg, aquí lo dejamos literal
+        delta = payload.cantidad
+
+    new_stock = (prod.stock_actual or 0) + delta
+    if new_stock < 0:
+        raise ValueError("Stock insuficiente")
+
+    prod.stock_actual = new_stock
+
+    mov = models.InventoryMovement(
+        producto_id=payload.producto_id,
+        tipo=payload.tipo.value,
+        cantidad=payload.cantidad,
+        costo_unitario=payload.costo_unitario,
+        motivo=payload.motivo or "",
+        referencia=payload.referencia or "",
+        observacion=payload.observacion or ""
+    )
+    db.add(mov)
+    db.add(prod)
+    db.commit()
+    db.refresh(mov)
+    return mov
+
+def list_movements(db: Session, producto_id: int = None, limit: int = 100):
+    q = db.query(models.InventoryMovement).order_by(models.InventoryMovement.created_at.desc())
+    if producto_id:
+        q = q.filter(models.InventoryMovement.producto_id == producto_id)
+    return q.limit(limit).all()
+
+def get_low_stock(db: Session):
+    return db.query(models.Producto)\
+        .filter(models.Producto.stock_minimo.isnot(None))\
+        .filter(models.Producto.stock_minimo > 0)\
+        .filter((models.Producto.stock_actual or 0) < models.Producto.stock_minimo).all()
+
+def update_producto_stock_minimo(db: Session, producto_id: int, minimo: float):
+    prod = db.query(models.Producto).get(producto_id)
+    if not prod:
+        return None
+    prod.stock_minimo = minimo
+    db.commit()
+    db.refresh(prod)
+    return prod
+
+
+
 # --- CRUD para Pagos ---
 def create_pago(db: Session, pago: schemas.PagoCreate):
     db_pago = models.Pago(**pago.dict())
@@ -646,40 +877,61 @@ def create_orden_trabajo(db: Session, orden: schemas.OrdenTrabajoCreate, operado
     db.refresh(db_orden)
     return db_orden
 
-def update_orden_trabajo(db: Session, orden_id: int, orden: schemas.OrdenTrabajoCreate):
-    db_orden = get_orden_trabajo(db, orden_id)
-    if not db_orden:
-        return None
 
-    # Actualizar campos principales
+
+def update_orden_trabajo(db, orden_id: int, orden: schemas.OrdenTrabajoCreate):
+    db_orden = (
+        db.query(models.OrdenTrabajo)
+          .options(
+              selectinload(models.OrdenTrabajo.productos),
+              selectinload(models.OrdenTrabajo.servicios),
+          )
+          .filter(models.OrdenTrabajo.id == orden_id)
+          .first()
+    )
+    if not db_orden:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+
+    # Campos simples
     db_orden.cliente_id = orden.cliente_id
     db_orden.total = orden.total
-    if orden.operador_id is not None:
+    # si tu esquema trae operador_id opcional:
+    if hasattr(orden, "operador_id") and orden.operador_id is not None:
         db_orden.operador_id = orden.operador_id
 
-    # Si la orden estaba en un estado final, al editarla, vuelve a borrador
-    if db_orden.estado in ['En revisión', 'Aprobada', 'Rechazada', 'Cerrada']:
-        db_orden.estado = 'Borrador'
-        db_orden.observaciones_aprobador = None # Limpiar observaciones si se edita
+    # *** CLAVE: reemplazar colecciones completas ***
+    # Vacía las relaciones; con delete-orphan se marcarán para borrado automáticamente
+    db_orden.productos = []
+    db_orden.servicios = []
 
-    # Eliminar productos y servicios existentes
-    db.query(models.OrdenProducto).filter(models.OrdenProducto.orden_id == orden_id).delete()
-    db.query(models.OrdenServicio).filter(models.OrdenServicio.orden_id == orden_id).delete()
-    db.flush() # Asegura que los detalles se eliminen antes de añadir nuevos
+    # Construye las nuevas líneas SIN reusar instancias antiguas
+    nuevos_productos = []
+    for p in getattr(orden, "productos", []):
+        nuevos_productos.append(
+            models.OrdenProducto(
+                producto_id=p.producto_id,
+                cantidad=p.cantidad,
+                precio_unitario=p.precio_unitario,
+            )
+        )
 
-    # Añadir nuevos productos
-    for producto_data in orden.productos:
-        db_orden.productos.append(models.OrdenProducto(**producto_data.dict()))
+    nuevos_servicios = []
+    for s in getattr(orden, "servicios", []):
+        nuevos_servicios.append(
+            models.OrdenServicio(
+                servicio_id=s.servicio_id,
+                cantidad=s.cantidad,
+                precio_servicio=s.precio_servicio,
+            )
+        )
 
-    # Añadir nuevos servicios
-    for servicio_data in orden.servicios:
-        db_orden.servicios.append(models.OrdenServicio(**servicio_data.dict()))
+    # Asigna las nuevas listas ya construidas
+    db_orden.productos = nuevos_productos
+    db_orden.servicios = nuevos_servicios
 
-    db.add(db_orden)
+    # No es necesario db.add(db_orden); ya está en la sesión
     db.commit()
     db.refresh(db_orden)
-    # Recargar las relaciones después de la actualización
-    db.refresh(db_orden, attribute_names=["productos", "servicios", "evidencias"])
     return db_orden
 
 def update_orden_trabajo_estado(db: Session, orden_id: int, estado: str, observaciones: Optional[str] = None):
@@ -1150,38 +1402,72 @@ def bulk_create_clientes(db: Session, file: IO, filename: str):
 
 def bulk_create_productos(db: Session, file: IO, filename: str):
     try:
-        file_extension = filename.split('.')[-1].lower()
-        if file_extension == 'xls':
+        ext = filename.split('.')[-1].lower()
+        if ext == 'xls':
             df = pd.read_excel(file, engine='xlrd')
-        elif file_extension == 'xlsx':
+        elif ext == 'xlsx':
             df = pd.read_excel(file, engine='openpyxl')
-        elif file_extension == 'csv':
+        elif ext == 'csv':
             df = pd.read_csv(file)
         else:
-            raise HTTPException(status_code=400, detail=f"Unsupported file format: {file_extension}. Please upload a .xls, .xlsx, or .csv file.")
+            raise HTTPException(status_code=400, detail=f"Unsupported file format: {ext}. Please upload .xls, .xlsx, or .csv")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error processing file: {e}")
 
     created_count = 0
     errors = []
 
-    for index, row in df.iterrows():
+    def _to_bool(v):
+        if pd.isna(v):
+            return False
+        s = str(v).strip().lower()
+        return s in ("1", "true", "t", "si", "sí", "x", "yes")
+
+    for idx, row in df.iterrows():
         try:
+            nombre = row['nombre']
+            precio = float(row['precio'])
+            costo = float(row.get('costo', 0.0) or 0.0)
+            es_servicio = _to_bool(row.get('es_servicio', False))
+            unidad_medida = row.get('unidad_medida', 'UND') or 'UND'
+            stock_minimo = float(row.get('stock_minimo', 0.0) or 0.0)
+            stock_inicial = float(row.get('stock_inicial', 0.0) or 0.0)
+
+            # Crear producto (incluye stock_minimo)
             producto_data = schemas.ProductoCreate(
-                nombre=row['nombre'],
-                precio=row['precio'],
-                costo=row.get('costo', 0.0),
-                es_servicio=row.get('es_servicio', False),
-                unidad_medida=row.get('unidad_medida', 'UND')
+                nombre=nombre,
+                precio=precio,
+                costo=costo,
+                es_servicio=es_servicio,
+                unidad_medida=unidad_medida,
+                stock_minimo=stock_minimo
             )
-            create_producto(db, producto_data)
+            prod = create_producto(db, producto_data)
+
+            # Si hay stock_inicial y NO es servicio, crear movimiento ENTRADA
+            if stock_inicial > 0 and not es_servicio:
+                try:
+                    payload = schemas.InventoryMovementCreate(
+                        producto_id=prod.id,
+                        tipo=schemas.MovementType.entrada,
+                        cantidad=stock_inicial,
+                        costo_unitario=costo,
+                        motivo="carga_masiva",
+                        referencia="stock_inicial",
+                        observacion=""
+                    )
+                    create_movement(db, payload)
+                except ValueError as e:
+                    errors.append(f"Fila {idx+2}: producto '{nombre}' creado pero no se pudo aplicar stock_inicial ({e}).")
+
             created_count += 1
+
         except Exception as e:
-            errors.append(f"Error creating product in row {index + 2}: {e}")
+            errors.append(f"Fila {idx+2}: error creando producto: {e}")
 
     return {
         "success": True,
-        "message": f"Bulk product upload finished. {created_count} products created.",
+        "message": f"Bulk product upload finished. {created_count} products created." + (f" Errors: {errors}" if errors else ""),
         "created_records": created_count,
         "errors": errors
     }
