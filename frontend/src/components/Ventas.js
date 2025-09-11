@@ -458,7 +458,6 @@ const Ventas = () => {
                                 </TableHead>
                                 <TableBody>
                                     {[...filteredVentas]
-                                        .reverse()
                                         .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                                         .map(venta => (
                                         <TableRow key={venta.id}>

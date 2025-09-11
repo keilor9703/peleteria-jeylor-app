@@ -403,7 +403,7 @@ def get_ventas(db: Session, skip: int = 0, limit: int = 100):
         joinedload(models.Venta.cliente),
         joinedload(models.Venta.detalles).joinedload(models.DetalleVenta.producto), # Load details and their products
         joinedload(models.Venta.pagos)
-    ).offset(skip).limit(limit).all()
+    ).order_by(models.Venta.fecha.desc()).offset(skip).limit(limit).all()
 
 def get_venta(db: Session, venta_id: int):
     return db.query(models.Venta).options(
