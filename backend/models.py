@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean, Enum, Text, func
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime
+from datetime import datetime, timezone
 
 import enum
 
@@ -46,7 +46,7 @@ class InventoryMovement(Base):
     motivo = Column(String(100), default="")
     referencia = Column(String(100), default="")  # ej: venta #, orden #
     observacion = Column(Text, default="")
-    created_at = Column(DateTime, server_default=func.now())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # producto = relationship("Producto", backref="movimientos")
     producto = relationship("Producto", lazy="joined")  # 👈

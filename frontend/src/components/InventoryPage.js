@@ -13,6 +13,15 @@ import Autocomplete from '@mui/material/Autocomplete';
 import ExpandMore from "@mui/icons-material/ExpandMore";
 import BulkUpload from './BulkUpload'; 
 
+const formatDate = (dateString) => {
+  if (!dateString) {
+    return '—';
+  }
+  // Append 'Z' to assume UTC if no timezone is specified
+  const date = new Date(dateString.endsWith('Z') ? dateString : dateString + 'Z');
+  return date.toLocaleString();
+};
+
 
 /* ---------------------- Banner de stock bajo (tema-aware) ---------------------- */
 const LowStockBanner = () => {
@@ -263,7 +272,7 @@ const MovementCard = ({ row }) => {
           Motivo: {row.motivo || '—'}
         </Typography>
         <Typography variant="caption" sx={{ display: 'block', mt: 1 }} color="text.secondary">
-          {row.created_at ? new Date(row.created_at).toLocaleString() : '—'}
+          {formatDate(row.created_at)}
         </Typography>
       </CardContent>
       <CardActions />
@@ -383,9 +392,7 @@ return (
               <TableCell>{r.motivo || "-"}</TableCell>
               <TableCell>{r.referencia || "-"}</TableCell>
               <TableCell>
-                {r.created_at
-                  ? new Date(r.created_at).toLocaleString()
-                  : "-"}
+                {formatDate(r.created_at)}
               </TableCell>
             </TableRow>
           ))}

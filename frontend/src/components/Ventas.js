@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 import ConfirmationDialog from './ConfirmationDialog';
 import VentaDetailDialog from './VentaDetailDialog';
 import {
-    Box, Paper, Typography, Grid, TextField, Button, IconButton, Autocomplete, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, useMediaQuery, useTheme, Card, CardContent, CardActions, Tabs, Tab
+    Box, Paper, Typography, Grid, TextField, Button, IconButton, Autocomplete, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, useMediaQuery, useTheme, Card, CardContent, CardActions, Tabs, Tab, TablePagination
 } from '@mui/material';
 import { AddCircleOutline, RemoveCircleOutline, Edit, Delete, Visibility } from '@mui/icons-material';
 import { ToggleButton, ToggleButtonGroup } from '@mui/material';
@@ -95,6 +95,10 @@ const Ventas = () => {
     const [selectedVenta, setSelectedVenta] = useState(null);
     
     const [value, setValue] = useState(0); // State for tab selection
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [searchTerm, setSearchTerm] = useState('');
+
 
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -111,7 +115,11 @@ const Ventas = () => {
     const fetchVentas = () => apiClient.get('/ventas/').then(res => setVentas(res.data)).catch(console.error);
     const fetchClientes = () => apiClient.get('/clientes/').then(res => setClientes(res.data)).catch(console.error);
     const fetchProductos = () => apiClient.get('/productos/').then(res => setProductos(res.data)).catch(console.error);
-    const fetchVentasSummary = () => apiClient.get('/reportes/ventas_summary').then(res => setTotalVentasHoy(res.data.total_ventas_hoy)).catch(console.error);
+    const fetchVentasSummary = () =>
+  apiClient
+    .get('/reportes/ventas_summary')
+    .then(res => setTotalVentasHoy(res.data.total_ventas_hoy))
+    .catch(console.error);
 
     useEffect(() => {
         if (editingVenta) {
@@ -246,6 +254,19 @@ const Ventas = () => {
     const handleChange = (event, newValue) => {
         setValue(newValue);
     };
+
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+    };
+
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
+
+    const filteredVentas = ventas.filter(venta =>
+        (venta.cliente?.nombre.toLowerCase() || '').includes(searchTerm.toLowerCase())
+    );
 
     return (
         <Box sx={{ width: '100%' }}>
@@ -394,11 +415,21 @@ const Ventas = () => {
                 <Paper sx={{ p: 3 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                         <Typography variant="h6">Historial de Ventas</Typography>
+                        <TextField
+                            label="Buscar por cliente"
+                            variant="outlined"
+                            size="small"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                         <Typography variant="h6">Ventas del día (Hoy): {formatCurrency(totalVentasHoy)}</Typography>
                     </Box>
                     {isMobile ? (
                         <Box>
-                            {[...ventas].reverse().map(venta => (
+                            {[...filteredVentas]
+                                .reverse()
+                                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                                .map(venta => (
                                 <VentaCard 
                                     key={venta.id}
                                     venta={venta}
@@ -426,7 +457,10 @@ const Ventas = () => {
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {[...ventas].reverse().map(venta => (
+                                    {[...filteredVentas]
+                                        .reverse()
+                                        .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                                        .map(venta => (
                                         <TableRow key={venta.id}>
                                             <TableCell>{venta.id}</TableCell>
                                             <TableCell>{venta.cliente?.nombre || 'N/A'}</TableCell>
@@ -451,7 +485,15 @@ const Ventas = () => {
                             </Table>
                         </TableContainer>
                     )}
-                    
+                     <TablePagination
+                        rowsPerPageOptions={[10, 25, 50]}
+                        component="div"
+                        count={filteredVentas.length}
+                        rowsPerPage={rowsPerPage}
+                        page={page}
+                        onPageChange={handleChangePage}
+                        onRowsPerPageChange={handleChangeRowsPerPage}
+                    />
                 </Paper>
             </TabPanel>
 
