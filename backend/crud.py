@@ -801,6 +801,65 @@ def get_rentabilidad_por_producto(db: Session, start_date: Optional[date] = None
     
     return sorted(report_data, key=lambda x: x.net_profit, reverse=True)
 
+
+def get_sales_by_day(db: Session, start_date: date, end_date: date) -> List[schemas.SalesByDay]:
+    """
+    Calculates total sales for each day in a given date range.
+    Fills in missing dates with 0 sales.
+    """
+    result = (
+        db.query(
+            func.date(models.Venta.fecha).label("day"),
+            func.sum(models.Venta.total).label("total"),
+        )
+        .filter(models.Venta.fecha >= start_date)
+        .filter(models.Venta.fecha < end_date + timedelta(days=1))
+        .group_by(func.date(models.Venta.fecha))
+        .order_by(func.date(models.Venta.fecha))
+        .all()
+    )
+    
+    # Fill in missing dates with 0 sales
+    sales_map = {r.day: r.total for r in result}
+    all_days = [start_date + timedelta(days=i) for i in range((end_date - start_date).days + 1)]
+    
+    sales_data = []
+    for day in all_days:
+        total = sales_map.get(day.isoformat(), 0.0)
+        sales_data.append(schemas.SalesByDay(day=day, total=total))
+        
+    return sales_data
+
+def get_dashboard_data(db: Session) -> schemas.DashboardData:
+    """
+    Gathers all data required for the main dashboard.
+    """
+    # 1. Ventas Hoy
+    ventas_hoy = get_total_sales_today(db)
+
+    # 2. Cuentas por Cobrar
+    deudores = get_clientes_deudores(db)
+    cuentas_por_cobrar = sum(d.total_debt_amount for d in deudores)
+
+    # 3. Productos Bajo Stock
+    productos_bajo_stock = len(get_low_stock(db))
+
+    # 4. Órdenes Recientes
+    ordenes_recientes = get_ordenes_trabajo(db, skip=0, limit=5)
+
+    # 5. Ventas últimos 30 días
+    end_date = datetime.now().date()
+    start_date = end_date - timedelta(days=29)
+    ventas_ultimos_30_dias = get_sales_by_day(db, start_date, end_date)
+
+    return schemas.DashboardData(
+        ventas_hoy=ventas_hoy,
+        cuentas_por_cobrar=cuentas_por_cobrar,
+        productos_bajo_stock=productos_bajo_stock,
+        ordenes_recientes=ordenes_recientes,
+        ventas_ultimos_30_dias=ventas_ultimos_30_dias,
+    )
+
 # --- CRUD para Órdenes de Trabajo ---
 
 def get_orden_trabajo(db: Session, orden_id: int):

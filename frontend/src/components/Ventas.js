@@ -268,6 +268,9 @@ const Ventas = () => {
         (venta.cliente?.nombre.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
 
+    // Ensure sales are always sorted from newest to oldest
+    const sortedVentas = [...filteredVentas].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
     return (
         <Box sx={{ width: '100%' }}>
             <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -413,21 +416,33 @@ const Ventas = () => {
             </TabPanel>
             <TabPanel value={value} index={1}>
                 <Paper sx={{ p: 3 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="h6">Historial de Ventas</Typography>
-                        <TextField
-                            label="Buscar por cliente"
-                            variant="outlined"
-                            size="small"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                        <Typography variant="h6">Ventas del día (Hoy): {formatCurrency(totalVentasHoy)}</Typography>
+                  <Box
+                    sx={{
+                        display: 'flex',
+                        flexDirection: isMobile ? 'column' : 'row',
+                        justifyContent: isMobile ? 'flex-start' : 'space-between',
+                        alignItems: isMobile ? 'stretch' : 'center',
+                        gap: 2,
+                        mb: 2,
+                    }}
+                    >
+                    <Typography variant="h6">Historial de Ventas</Typography>
+
+                    <TextField
+                        fullWidth={isMobile} // 👈 hace que ocupe el ancho completo en móvil
+                        label="Buscar por cliente"
+                        variant="outlined"
+                        size="small"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+
+                    <Typography variant="h6">Ventas del día (Hoy): {formatCurrency(totalVentasHoy)}</Typography>
                     </Box>
+
                     {isMobile ? (
                         <Box>
-                            {[...filteredVentas]
-                                .reverse()
+                            {sortedVentas
                                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                                 .map(venta => (
                                 <VentaCard 
@@ -457,7 +472,7 @@ const Ventas = () => {
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {[...filteredVentas]
+                                    {sortedVentas
                                         .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                                         .map(venta => (
                                         <TableRow key={venta.id}>

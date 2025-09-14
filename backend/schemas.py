@@ -326,6 +326,19 @@ class ProductoRentabilidad(BaseModel):
     profit_margin: float
 
 
+# --- Dashboard Schemas ---
+class SalesByDay(BaseModel):
+    day: datetime.date
+    total: float
+
+class DashboardData(BaseModel):
+    ventas_hoy: float
+    cuentas_por_cobrar: float
+    productos_bajo_stock: int
+    ordenes_recientes: List['OrdenTrabajo']
+    ventas_ultimos_30_dias: List[SalesByDay]
+
+
 # =========================
 # Órdenes de Trabajo / Productividad
 # =========================
@@ -530,3 +543,6 @@ class MovementExcel(BaseModel):
     motivo: Optional[str] = None
     referencia: Optional[str] = None
     observacion: Optional[str] = None
+
+# Resolve forward references
+DashboardData.model_rebuild()

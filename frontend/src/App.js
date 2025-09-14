@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { styled, ThemeProvider } from '@mui/material/styles';
 import MuiAppBar from '@mui/material/AppBar';
-import { Toolbar, Typography, Button, IconButton, List, ListItem, ListItemButton, ListItemText, ListItemIcon, Collapse, Box, CircularProgress, Divider, Drawer } from '@mui/material';
-import { ShoppingCart, People, Inventory, Assessment, AdminPanelSettings, ExpandLess, ExpandMore, Brightness4 as Brightness4Icon, Brightness7 as Brightness7Icon, Assignment, Dashboard as DashboardIcon } from '@mui/icons-material';
+import { Toolbar, Typography, Button, IconButton, List, ListItem, ListItemButton, ListItemText, ListItemIcon, Collapse, Box, CircularProgress, Divider, Drawer, Tooltip } from '@mui/material';
+import { ShoppingCart, People, Inventory, Assessment, AdminPanelSettings, ExpandLess, ExpandMore, Brightness4 as Brightness4Icon, Brightness7 as Brightness7Icon, Assignment, Dashboard as DashboardIcon, Logout as LogoutIcon } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -30,6 +30,7 @@ import PanelOperador from './components/PanelOperador';
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import InventarioPage from './components/InventoryPage'; // 👈 nuevo
 import InventoryReports from './components/InventoryReports';
+import Dashboard from './components/Dashboard';
 
 
 
@@ -214,9 +215,13 @@ function App() {
                     </IconButton>
                     <Notifications />
                     <Typography variant="body1" sx={{ mr: 2, ml: 2 }}>
-                      Bienvenido, {user?.username} ({user?.role?.name})
+                      Bienvenido, {user?.username}
                     </Typography>
-                    <Button color="inherit" onClick={() => handleLogout()}>Cerrar Sesión</Button>
+                                        <Tooltip title="Cerrar Sesión">
+                      <IconButton color="inherit" onClick={() => handleLogout()}>
+                        <LogoutIcon />
+                      </IconButton>
+                    </Tooltip>
                   </Toolbar>
                 </AppBar>
                 
@@ -317,7 +322,7 @@ function App() {
                 <Box component="main" sx={{ flexGrow: 1, p: 3, display: 'flex', flexDirection: 'column' }}>
                     <DrawerHeader />
                     <Routes>
-                        <Route path="/" element={<Home />} />
+                        <Route path="/" element={user?.role?.name === 'Admin' ? <Dashboard /> : <Home />} />
                         <Route path="/ventas" element={<Ventas />} />
                         <Route path="/clientes" element={<Clientes />} />
                         <Route path="/productos" element={<Productos />} />
