@@ -1,124 +1,127 @@
-# Manual Técnico del Sistema de Gestión de Ventas "Peleteria Jeylor"
+=================================
+MANUAL TÉCNICO
+Sistema de Gestión Peleteria Jeylor
+=================================
 
-Este documento detalla la arquitectura, tecnologías, estructura y aspectos técnicos del sistema de gestión de ventas "Peleteria Jeylor". Está diseñado para desarrolladores y personal técnico que necesiten comprender, mantener o extender el sistema.
+Versión 1.0
 
-## 1. Arquitectura del Sistema
 
-El sistema es una aplicación web full-stack con una arquitectura cliente-servidor, compuesta por un backend (API) y un frontend (interfaz de usuario).
+-- ÍNDICE --
 
-*   **Frontend:** Aplicación de una sola página (SPA) desarrollada con React. Se comunica con el backend a través de peticiones HTTP (RESTful API).
-*   **Backend:** API RESTful construida con FastAPI, que maneja la lógica de negocio, la interacción con la base de datos y la autenticación.
-*   **Base de Datos:** SQLite, una base de datos ligera basada en archivos, utilizada para almacenar toda la información del sistema.
+1. Resumen de la Arquitectura
+2. Configuración del Entorno de Desarrollo
+   2.1. Prerrequisitos
+   2.2. Backend
+   2.3. Frontend
+   2.4. Ejecución
+3. Estructura del Backend
+   3.1. Archivos Principales
+   3.2. Implementación del Dashboard
+4. Estructura del Frontend
+   4.1. Archivos Principales
+   4.2. Implementación del Dashboard
+5. Flujo de Autenticación
+6. Puntos de Mejora Sugeridos
 
-## 2. Tecnologías Utilizadas
 
-### 2.1 Backend (API RESTful)
+-- 1. RESUMEN DE LA ARQUITECTURA --
 
-*   **Lenguaje:** Python 3.x
-*   **Framework Web:** FastAPI (versión moderna y de alto rendimiento para construir APIs).
-*   **ORM (Object-Relational Mapper):** SQLAlchemy (para la interacción con la base de datos de forma orientada a objetos).
-*   **Base de Datos:** SQLite (archivo `sales.db`).
-*   **Seguridad:**
-    *   **Hashing de Contraseñas:** Passlib (para el almacenamiento seguro de contraseñas).
-    *   **Autenticación:** JSON Web Tokens (JWT) para la autenticación de usuarios.
-*   **Configuración:** python-dotenv (para la gestión de variables de entorno, como la `SECRET_KEY` de JWT).
-*   **Servidor ASGI:** Uvicorn (servidor web asíncrono para ejecutar aplicaciones ASGI como FastAPI).
+El proyecto sigue una arquitectura cliente-servidor desacoplada:
 
-### 2.2 Frontend (Interfaz de Usuario)
+- **Frontend (Cliente):** Una Single-Page Application (SPA) desarrollada con React y la librería de componentes Material-UI. Se encarga de toda la lógica de presentación y la interacción con el usuario.
 
-*   **Librería JavaScript:** React (para construir la interfaz de usuario interactiva).
-*   **Enrutamiento:** React Router DOM (para la navegación entre las diferentes vistas de la aplicación).
-*   **Cliente HTTP:** Axios (para realizar peticiones HTTP al backend).
-*   **Librería de Componentes UI:** Material-UI (MUI) (para un diseño moderno y responsivo, siguiendo los principios de Material Design).
-*   **Notificaciones:** React Toastify (para mostrar mensajes y alertas al usuario).
-*   **Visualización de Datos:** Chart.js / React-Chartjs-2 (utilizado en los módulos de reportes para gráficos).
+- **Backend (Servidor):** Una API RESTful construida sobre el framework FastAPI de Python. Maneja toda la lógica de negocio, persistencia de datos y autenticación.
 
-## 3. Estructura del Proyecto
+- **Base de Datos:** El sistema utiliza PostgreSQL como motor de base de datos, con SQLAlchemy como ORM para el mapeo de objetos y la interacción.
 
-```
-AppWeb_PelJeylor/
-├── backend/                # Contiene el código del backend (API FastAPI)
-│   ├── main.py             # Punto de entrada de la API, definición de rutas, modelos Pydantic, lógica de autenticación.
-│   ├── models.py           # Definiciones de modelos de base de datos (SQLAlchemy ORM). Representa las tablas de la DB.
-│   ├── schemas.py          # Esquemas de datos (Pydantic). Define la estructura de los datos para validación de entrada y serialización de salida de la API.
-│   ├── crud.py             # Operaciones CRUD (Create, Read, Update, Delete) para interactuar con la base de datos.
-│   ├── database.py         # Configuración de la conexión a la base de datos SQLite.
-│   └── requirements.txt    # Lista de dependencias de Python para el backend.
-├── frontend/               # Contiene el código del frontend (Aplicación React)
-│   ├── public/             # Archivos estáticos que se sirven directamente (index.html, imágenes, favicon).
-│   ├── src/                # Código fuente principal de la aplicación React.
-│   │   ├── api.js          # Configuración de la instancia de Axios para las llamadas al backend, incluyendo la `baseURL`.
-│   │   ├── App.js          # Componente principal de la aplicación, maneja el enrutamiento y la estructura general.
-│   │   └── components/     # Directorio que contiene todos los componentes reutilizables de la interfaz de usuario (ej. Clientes, Productos, OrdenesTrabajo, Login, Reportes).
-│   └── package.json        # Define las dependencias de Node.js y scripts para el frontend.
-├── sales.db                # Archivo de la base de datos SQLite. Se crea automáticamente al iniciar el backend si no existe.
-├── start_project.bat       # Script de Windows para iniciar ambos servidores (backend y frontend) simultáneamente.
-└── README.md               # Documentación general del proyecto.
-```
+- **Autenticación:** La seguridad de la API se basa en JSON Web Tokens (JWT).
 
-## 4. Base de Datos (`sales.db`)
 
-*   **Tipo:** SQLite.
-*   **Ubicación:** Archivo `sales.db` en el directorio raíz del proyecto.
-*   **Generación:** Se crea automáticamente la primera vez que se inicia el servidor backend.
-*   **Esquema:** Definido en `backend/models.py` utilizando SQLAlchemy. Incluye tablas para usuarios, roles, clientes, productos, ventas, órdenes de trabajo, etc.
-*   **Herramientas:** Puede ser gestionada y visualizada con herramientas como DB Browser for SQLite.
+-- 2. CONFIGURACIÓN DEL ENTORNO DE DESARROLLO --
 
-## 5. API Backend (FastAPI)
+2.1. Prerrequisitos
+- Python 3.10+
+- Node.js 16.x+
+- npm (o yarn)
+- Una instancia de PostgreSQL en ejecución.
 
-*   **Punto de Entrada:** `backend/main.py`.
-*   **Documentación Interactiva:** FastAPI genera automáticamente documentación de la API.
-    *   **Swagger UI:** Accesible en `http://localhost:8000/docs` (cuando el backend está en ejecución).
-    *   **ReDoc:** Accesible en `http://localhost:8000/redoc` (cuando el backend está en ejecución).
-*   **Endpoints:** Definidos en `main.py` y utilizan los esquemas de `schemas.py` para la validación de datos y las funciones de `crud.py` para la interacción con la base de datos.
-*   **Autenticación:** Los endpoints protegidos requieren un token JWT válido en el encabezado `Authorization`.
+2.2. Backend
 
-## 6. Configuración y Ejecución
+1. Navegue a la raíz del proyecto.
+2. Cree un entorno virtual: `python -m venv .venv`
+3. Active el entorno virtual: `source .venv/Scripts/activate` (en Windows) o `source .venv/bin/activate` (en macOS/Linux).
+4. Instale las dependencias de Python: `pip install -r backend/requirements.txt`
+5. **Configuración de la Base de Datos:** La cadena de conexión a la base de datos está definida en `backend/database.py`. Asegúrese de que apunte a su instancia de PostgreSQL.
+6. **Variable de Entorno de Seguridad (Recomendado):** La clave secreta (SECRET_KEY) para JWT en `backend/main.py` está hardcodeada. Se recomienda encarecidamente moverla a un archivo `.env` en la raíz del proyecto y cargarla usando `python-dotenv`.
 
-### 6.1 Requisitos Previos
+2.3. Frontend
 
-*   Python 3.x y pip.
-*   Node.js y npm.
+1. Navegue al directorio del frontend: `cd frontend`
+2. Instale las dependencias de Node.js: `npm install`
+3. **Variable de Entorno de API:** El archivo `frontend/src/api.js` busca la URL del backend en la variable de entorno `REACT_APP_API_URL`. Puede crear un archivo `.env` en el directorio `frontend` para definirla (ej. `REACT_APP_API_URL=http://127.0.0.1:8000`). Si no se define, usará `http://127.0.0.1:8000` por defecto.
 
-### 6.2 Pasos de Configuración
+2.4. Ejecución
 
-1.  **Backend:**
-    *   Navegar a `backend/`.
-    *   Crear y activar un entorno virtual (`python -m venv venv`).
-    *   Instalar dependencias (`pip install -r requirements.txt`).
-    *   **Seguridad:** Configurar `SECRET_KEY` en un archivo `.env` en el directorio `backend` (recomendado para producción).
-2.  **Frontend:**
-    *   Navegar a `frontend/`.
-    *   Instalar dependencias (`npm install`).
-    *   Configurar `baseURL` de Axios en `frontend/src/api.js` si el backend no está en `http://localhost:8000`.
+1. **Iniciar Backend:** Desde la raíz del proyecto (con el entorno virtual activado), ejecute: `uvicorn backend.main:app --reload`
+2. **Iniciar Frontend:** Desde el directorio `frontend`, ejecute: `npm start`
 
-### 6.3 Ejecución
 
-*   **Windows (Script):** Ejecutar `start_project.bat` desde la raíz del proyecto.
-*   **Manual (Multiplataforma):**
-    *   **Backend:** Desde `backend/`, activar venv y ejecutar `uvicorn main:app --host 0.0.0.0 --port 8000 --reload`.
-    *   **Frontend:** Desde `frontend/`, ejecutar `npm start`.
+-- 3. ESTRUCTURA DEL BACKEND --
 
-## 7. Consideraciones de Seguridad
+3.1. Archivos Principales
 
-*   **`SECRET_KEY` de JWT:** **CRÍTICO** moverla a una variable de entorno (`.env`) en producción y usar una clave larga y aleatoria.
-*   **Credenciales por Defecto:** Cambiar las credenciales del usuario `admin` por defecto (`admin`/`adminpass`) inmediatamente en un entorno de producción.
+- `main.py`: Punto de entrada de la aplicación FastAPI. Define los routers de la API, la configuración de CORS y los middlewares.
+- `crud.py`: Contiene toda la lógica de negocio y las funciones que interactúan directamente con la base de datos (consultas, creaciones, actualizaciones).
+- `models.py`: Define los modelos de datos de SQLAlchemy, que se corresponden con las tablas de la base de datos.
+- `schemas.py`: Define los esquemas de Pydantic utilizados para la validación de datos de entrada/salida en la API y para el modelado de respuestas.
+- `database.py`: Gestiona la conexión a la base de datos y la sesión de SQLAlchemy.
 
-## 8. Pruebas
+3.2. Implementación del Dashboard (Novedad)
 
-Actualmente, el proyecto **no cuenta con pruebas automatizadas**.
-*   **Recomendación Backend:** Implementar pruebas unitarias y de integración con `pytest`.
-*   **Recomendación Frontend:** Implementar pruebas unitarias para componentes con `@testing-library/react` y `jest`.
+Para implementar el dashboard de administrador, se realizaron los siguientes añadidos:
 
-## 9. Despliegue
+- **Endpoint:** Se creó `GET /reportes/dashboard` en `main.py`. Este endpoint está protegido y solo es accesible para usuarios con el rol 'Admin'.
+- **Funciones CRUD:** Se añadieron dos funciones principales en `crud.py`:
+    - `get_sales_by_day()`: Calcula las ventas agregadas por día para un rango de fechas.
+    - `get_dashboard_data()`: Orquesta las llamadas a otras funciones CRUD para recopilar todos los KPIs en una sola respuesta.
+- **Schemas:** Se añadieron los siguientes esquemas en `schemas.py`:
+    - `SalesByDay`: Define la estructura para los datos del gráfico de ventas.
+    - `DashboardData`: Define la estructura de la respuesta completa del endpoint del dashboard. Para resolver un `NameError` por orden de definición, se usó una referencia hacia adelante (`List['OrdenTrabajo']`) y se resolvió con `DashboardData.model_rebuild()`.
 
-### 9.1 Backend
 
-*   Usar un servidor de aplicaciones ASGI como Gunicorn o Uvicorn en modo producción.
-*   Considerar Dockerización para un despliegue consistente.
+-- 4. ESTRUCTURA DEL FRONTEND --
 
-### 9.2 Frontend
+4.1. Archivos Principales
 
-*   Construir la aplicación (`npm run build`).
-*   Servir los archivos estáticos con un servidor web (Nginx, Apache) o integrarlos en el backend FastAPI.
-*   Utilizar servicios de hosting estático o plataformas PaaS (Netlify, Vercel).
+- `App.js`: Componente principal que gestiona el estado de autenticación, la navegación principal (react-router) y el layout general de la aplicación (AppBar, Drawer).
+- `components/`: Directorio que contiene todos los componentes reutilizables y las vistas principales de cada módulo (ej. `Ventas.js`, `Clientes.js`).
+- `api.js`: Contiene la instancia preconfigurada de `axios`. Incluye un interceptor para añadir automáticamente el `Authorization: Bearer <token>` a todas las peticiones salientes.
+- `public/index.html`: Plantilla HTML principal. Se modificó el tag `<title>` a "Peleteria Jeylor App".
+
+4.2. Implementación del Dashboard (Novedad)
+
+- **Componente:** Se creó el nuevo componente `frontend/src/components/Dashboard.js`.
+    - Realiza una única llamada al endpoint `/reportes/dashboard` para obtener todos los datos.
+    - Utiliza `react-chartjs-2` para renderizar el gráfico de ventas.
+    - Muestra los KPIs en tarjetas interactivas que enlazan a sus respectivos módulos usando el componente `<Link>` de `react-router-dom`.
+- **Enrutamiento Condicional:** En `App.js`, la ruta principal (`/`) ahora renderiza un componente de forma condicional:
+    - Si `user.role.name === 'Admin'`, muestra el componente `<Dashboard />`.
+    - De lo contrario, muestra el componente de bienvenida `<Home />`.
+
+
+-- 5. FLUJO DE AUTENTICACIÓN --
+
+1. El usuario introduce sus credenciales en el componente `Login`.
+2. Se realiza una petición POST al endpoint `/token` del backend.
+3. Si las credenciales son válidas, la API devuelve un `access_token` (JWT).
+4. El frontend guarda este token en el `localStorage` del navegador.
+5. El interceptor de `axios` en `api.js` lee el token del `localStorage` y lo añade a la cabecera `Authorization` de todas las peticiones subsiguientes.
+6. El backend valida este token en cada petición a un endpoint protegido.
+
+
+-- 6. PUNTOS DE MEJORA SUGERIDOS --
+
+- **Seguridad:** Mover la `SECRET_KEY` del backend a variables de entorno es una prioridad.
+- **Rendimiento:** Implementar paginación, filtrado y ordenamiento del lado del servidor para las listas principales (ventas, clientes, etc.) para mejorar la escalabilidad.
+- **Base de Datos:** Añadir índices a las claves foráneas y a las columnas usadas frecuentemente en filtros (ej. `ventas.cliente_id`, `ventas.fecha`).
+- **Gestión de Estado:** Para una mayor escalabilidad del frontend, considerar la adopción de una librería de gestión de estado global como Redux Toolkit o Zustand.
