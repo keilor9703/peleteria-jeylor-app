@@ -1048,6 +1048,8 @@ def get_panel_ordenes_pendientes(
 
 @panel_operador_router.get("/productividad", response_model=schemas.PanelProductividad)
 def get_panel_productividad(
+    start_date: Optional[date] = Query(None, description="YYYY-MM-DD"),
+    end_date: Optional[date] = Query(None, description="YYYY-MM-DD"),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user)
 ):
@@ -1055,7 +1057,12 @@ def get_panel_productividad(
         raise HTTPException(status_code=403, detail="Acceso denegado. Funcionalidad solo para operadores.")
     
     operador_id_to_fetch = current_user.id
-    return crud.get_productividad_operador(db, operador_id=operador_id_to_fetch)
+    return crud.get_productividad_operador(
+        db,
+        operador_id=operador_id_to_fetch,
+        start_date=start_date,
+        end_date=end_date
+    )
 
 @panel_operador_router.get("/historial", response_model=List[schemas.PanelHistorialItem])
 def get_panel_historial(

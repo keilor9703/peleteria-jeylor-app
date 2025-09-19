@@ -457,11 +457,19 @@ class ProductividadOperadorDetalle(BaseModel):
     servicio_nombre: str
     valor_ganado: float
 
+class ProductividadUnidadesPorServicio(BaseModel):
+    servicio_id: int
+    servicio_nombre: str
+    total_unidades: float
+    total_valor: float  # 👈 necesario para la columna "$" del frontend
+
 class ProductividadOperador(BaseModel):
     operador_id: int
     operador_username: str
     total_ganado: float
-    desglose: List[ProductividadOperadorDetalle] = []
+    desglose: List[ProductividadOperadorDetalle]
+    desglose_unidades: List[ProductividadUnidadesPorServicio] = []  # 👈 nuevo campo
+
 
 class ReporteProductividad(BaseModel):
     start_date: datetime.date
@@ -497,6 +505,7 @@ class PanelProductividad(BaseModel):
     servicios_mes: int
     ordenes_completadas_semana: int
     grafica_servicios_semana: List[PanelProductividadDataPoint]
+    unidades_por_servicio_filtrado: List[ProductividadUnidadesPorServicio] = [] # Nuevo campo para la tabla
 
 class PanelHistorialItem(BaseModel):
     id: int

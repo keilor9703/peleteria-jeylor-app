@@ -400,47 +400,48 @@ def delete_producto(db: Session, producto_id: int):
 # --- CRUD para Ventas ---
 def get_ventas(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Venta).options(
-        joinedload(models.Venta.cliente),
-        joinedload(models.Venta.detalles).joinedload(models.DetalleVenta.producto), # Load details and their products
-        joinedload(models.Venta.pagos)
+        selectinload(models.Venta.cliente),
+        selectinload(models.Venta.detalles).selectinload(models.DetalleVenta.producto),
+        selectinload(models.Venta.pagos)
     ).order_by(models.Venta.fecha.desc()).offset(skip).limit(limit).all()
 
 def get_venta(db: Session, venta_id: int):
     return db.query(models.Venta).options(
-        joinedload(models.Venta.cliente),
-        joinedload(models.Venta.detalles).joinedload(models.DetalleVenta.producto), # Load details and their products
-        joinedload(models.Venta.pagos)
+        selectinload(models.Venta.cliente),
+        selectinload(models.Venta.detalles).selectinload(models.DetalleVenta.producto),
+        selectinload(models.Venta.pagos)
     ).filter(models.Venta.id == venta_id).first()
 
 def create_venta(db: Session, venta: schemas.VentaCreate):
-    total_venta = 0.0
-    db_detalles = []
+    detalles = []
+    total_venta = 0
 
     for detalle_data in venta.detalles:
-        producto = get_producto(db, detalle_data.producto_id)
+        producto = db.query(models.Producto).filter(models.Producto.id == detalle_data.producto_id).first()
         if not producto:
-            # Manejar el error si el producto no existe
-            return None 
+            raise HTTPException(status_code=404, detail=f"Producto con id {detalle_data.producto_id} no encontrado")
+        
+        # ✅ Usa producto.precio si no viene precio_unitario o es 0
+        precio_unitario = (
+            detalle_data.precio_unitario
+            if detalle_data.precio_unitario not in (None, 0)
+            else producto.precio
+        )
 
-        # Usar el precio unitario del request si está disponible, si no, usar el de la BD
-        precio_unitario = detalle_data.precio_unitario if detalle_data.precio_unitario is not None else producto.precio
-        
-        detalle_total = precio_unitario * detalle_data.cantidad
-        total_venta += detalle_total
-        
-        db_detalle = models.DetalleVenta(
+        total_venta += detalle_data.cantidad * precio_unitario
+        detalle = models.DetalleVenta(
             producto_id=detalle_data.producto_id,
             cantidad=detalle_data.cantidad,
             precio_unitario=precio_unitario
         )
-        db_detalles.append(db_detalle)
+        detalles.append(detalle)
 
     db_venta = models.Venta(
         cliente_id=venta.cliente_id,
         total=total_venta,
-        monto_pagado=total_venta if venta.pagada else 0.0,
+        monto_pagado=total_venta if venta.pagada else 0,
         estado_pago="pagado" if venta.pagada else "pendiente",
-        detalles=db_detalles # Assign the list of details
+        detalles=detalles
     )
     db.add(db_venta)
     db.commit()
@@ -1213,42 +1214,112 @@ def marcar_notificacion_leida(db: Session, notificacion_id: int, usuario_id: int
 
 # --- CRUD para Reporte de Productividad ---
 
+# --- CRUD para Reporte de Productividad ---
+
 def get_reporte_productividad(db: Session, start_date: date, end_date: date):
-    # Ajustar end_date para que incluya todo el día
+    """
+    Reporte por operador:
+      - total_ganado (suma de valor_productividad)
+      - desglose (por orden: orden_id, servicio_nombre, valor_ganado)
+      - desglose_unidades (por servicio: servicio_id, servicio_nombre, total_unidades, total_valor)
+    """
+    # Incluir todo el día de end_date
     end_date_inclusive = end_date + timedelta(days=1)
 
-    registros = db.query(models.RegistroProductividad).options(
-        joinedload(models.RegistroProductividad.operador),
-        joinedload(models.RegistroProductividad.servicio)
-    ).filter(
-        models.RegistroProductividad.fecha >= start_date,
-        models.RegistroProductividad.fecha < end_date_inclusive
-    ).all()
+    # 1) Traer registros para armar total_ganado y desglose (por orden)
+    registros = (
+        db.query(models.RegistroProductividad)
+        .options(
+            joinedload(models.RegistroProductividad.operador),
+            joinedload(models.RegistroProductividad.servicio),
+        )
+        .filter(
+            models.RegistroProductividad.fecha >= start_date,
+            models.RegistroProductividad.fecha < end_date_inclusive,
+        )
+        .all()
+    )
 
-    # Agrupar por operador
-    productividad_por_operador = {}
+    productividad_por_operador: dict[int, schemas.ProductividadOperador] = {}
+
     for reg in registros:
-        operador_id = reg.operador_id
-        if operador_id not in productividad_por_operador:
-            productividad_por_operador[operador_id] = schemas.ProductividadOperador(
-                operador_id=operador_id,
-                operador_username=reg.operador.username,
-                total_ganado=0,
-                desglose=[]
+        op_id = reg.operador_id
+        if op_id not in productividad_por_operador:
+            productividad_por_operador[op_id] = schemas.ProductividadOperador(
+                operador_id=op_id,
+                operador_username=reg.operador.username if reg.operador else str(op_id),
+                total_ganado=0.0,
+                desglose=[],
+                desglose_unidades=[],  # 👈 campo nuevo en el schema
             )
-        
-        # Sumar al total y añadir al desglose
-        productividad_por_operador[operador_id].total_ganado += reg.valor_productividad
-        productividad_por_operador[operador_id].desglose.append(schemas.ProductividadOperadorDetalle(
-            orden_id=reg.orden_id,
-            servicio_nombre=reg.servicio.nombre,
-            valor_ganado=reg.valor_productividad
-        ))
 
+        item = productividad_por_operador[op_id]
+        valor = float(reg.valor_productividad or 0.0)
+        item.total_ganado += valor
+        item.desglose.append(
+            schemas.ProductividadOperadorDetalle(
+                orden_id=reg.orden_id,
+                servicio_nombre=reg.servicio.nombre if reg.servicio else "",
+                valor_ganado=valor,
+            )
+        )
+
+    # 2) Agregar "Unidades por Servicio" (por operador & servicio)
+    #    JOIN RegistroProductividad ↔ OrdenServicio (por orden_id & servicio_id) ↔ Producto (nombre)
+    unidades_rows = (
+        db.query(
+            models.RegistroProductividad.operador_id.label("operador_id"),
+            models.RegistroProductividad.servicio_id.label("servicio_id"),
+            models.Producto.nombre.label("servicio_nombre"),
+            func.coalesce(func.sum(models.OrdenServicio.cantidad), 0).label("total_unidades"),
+            func.coalesce(func.sum(models.RegistroProductividad.valor_productividad), 0).label("total_valor"),
+        )
+        .join(
+            models.OrdenServicio,
+            (models.OrdenServicio.orden_id == models.RegistroProductividad.orden_id)
+            & (models.OrdenServicio.servicio_id == models.RegistroProductividad.servicio_id),
+        )
+        .join(models.Producto, models.Producto.id == models.RegistroProductividad.servicio_id)
+        .filter(
+            models.RegistroProductividad.fecha >= start_date,
+            models.RegistroProductividad.fecha < end_date_inclusive,
+        )
+        .group_by(
+            models.RegistroProductividad.operador_id,
+            models.RegistroProductividad.servicio_id,
+            models.Producto.nombre,
+        )
+        .all()
+    )
+
+    for r in unidades_rows:
+        op_id = int(r.operador_id)
+
+        # Si por algún motivo no se creó en el bloque anterior (no debería pasar), crear stub
+        if op_id not in productividad_por_operador:
+            user = db.query(models.User).get(op_id)
+            productividad_por_operador[op_id] = schemas.ProductividadOperador(
+                operador_id=op_id,
+                operador_username=user.username if user else str(op_id),
+                total_ganado=0.0,
+                desglose=[],
+                desglose_unidades=[],
+            )
+
+        productividad_por_operador[op_id].desglose_unidades.append(
+            schemas.ProductividadUnidadesPorServicio(
+                servicio_id=int(r.servicio_id),
+                servicio_nombre=str(r.servicio_nombre),
+                total_unidades=float(r.total_unidades or 0.0),
+                total_valor=float(r.total_valor or 0.0),  # 👈 usado por el frontend
+            )
+        )
+
+    # 3) Construir respuesta
     return schemas.ReporteProductividad(
         start_date=start_date,
         end_date=end_date,
-        reporte=list(productividad_por_operador.values())
+        reporte=list(productividad_por_operador.values()),
     )
 
 def get_total_ordenes_trabajo(
@@ -1310,9 +1381,15 @@ def get_ordenes_pendientes_operador(db: Session, operador_id: int) -> List[schem
         ))
     return response
 
-def get_productividad_operador(db: Session, operador_id: int) -> schemas.PanelProductividad:
+def get_productividad_operador(
+    db: Session,
+    operador_id: int,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+) -> schemas.PanelProductividad:
     """
     Calcula y obtiene las métricas de productividad para un operador específico, por unidades de servicio.
+    Permite filtrar por rango de fechas para la gráfica y la tabla de unidades por servicio.
     """
     user_tz_offset = timedelta(hours=-5)  # Colombia Time (UTC-5)
     now_user_tz = datetime.utcnow() + user_tz_offset
@@ -1323,8 +1400,8 @@ def get_productividad_operador(db: Session, operador_id: int) -> schemas.PanelPr
     month_start_date = now_user_tz.date().replace(day=1)
     month_start_utc = datetime.combine(month_start_date, datetime.min.time()) - user_tz_offset
 
-    # Helper function
-    def get_total_units_for_range(start_utc: datetime):
+    # Helper function for fixed ranges (Hoy, Semana, Mes)
+    def get_total_units_for_fixed_range(start_utc: datetime):
         return (db.query(func.sum(models.OrdenServicio.cantidad))
                 .select_from(models.OrdenServicio)
                 .join(models.RegistroProductividad,
@@ -1336,13 +1413,13 @@ def get_productividad_operador(db: Session, operador_id: int) -> schemas.PanelPr
                 ).scalar() or 0)
 
     # 1. Hoy
-    servicios_hoy = get_total_units_for_range(today_start_utc)
+    servicios_hoy = get_total_units_for_fixed_range(today_start_utc)
 
     # 2. Semana
-    servicios_semana = get_total_units_for_range(week_start_utc)
+    servicios_semana = get_total_units_for_fixed_range(week_start_utc)
 
     # 3. Mes
-    servicios_mes = get_total_units_for_range(month_start_utc)
+    servicios_mes = get_total_units_for_fixed_range(month_start_utc)
 
     # 4. Órdenes completadas en la semana
     ordenes_completadas_semana = db.query(func.count(models.OrdenTrabajo.id)).filter(
@@ -1351,8 +1428,20 @@ def get_productividad_operador(db: Session, operador_id: int) -> schemas.PanelPr
         models.OrdenTrabajo.fecha_actualizacion >= week_start_utc
     ).scalar() or 0
 
-    # 5. Gráfica de servicios en la semana
-    servicios_agg = (
+    # Determine the date range for the graph and the new table
+    # If start_date and end_date are provided, use them. Otherwise, default to the current week.
+    if start_date and end_date:
+        filtered_start_datetime_local = datetime.combine(start_date, datetime.min.time())
+        filtered_start_utc = filtered_start_datetime_local - user_tz_offset
+        filtered_end_datetime_local = datetime.combine(end_date, datetime.max.time())
+        filtered_end_utc = filtered_end_datetime_local - user_tz_offset
+    else:
+        # Default to current week if no specific filter dates are provided
+        filtered_start_utc = week_start_utc
+        filtered_end_utc = datetime.combine(now_user_tz.date(), datetime.max.time()) - user_tz_offset # End of current day
+
+    # 5. Gráfica de servicios (ahora con filtro opcional)
+    servicios_agg_query = (
         db.query(
             models.Producto.nombre,
             func.sum(models.OrdenServicio.cantidad).label('cantidad')
@@ -1368,15 +1457,52 @@ def get_productividad_operador(db: Session, operador_id: int) -> schemas.PanelPr
         )
         .filter(
             models.RegistroProductividad.operador_id == operador_id,
-            models.RegistroProductividad.fecha >= week_start_utc
+            models.RegistroProductividad.fecha >= filtered_start_utc,
+            models.RegistroProductividad.fecha <= filtered_end_utc
         )
         .group_by(models.Producto.nombre)
-        .all()
     )
+    servicios_agg = servicios_agg_query.all()
 
     grafica_servicios_semana = [
         schemas.PanelProductividadDataPoint(name=nombre, value=cantidad)
         for nombre, cantidad in servicios_agg
+    ]
+
+    # 6. Tabla de unidades por tipo de servicio (con filtro opcional)
+    unidades_por_servicio_query = (
+        db.query(
+            models.Producto.id.label("servicio_id"),
+            models.Producto.nombre.label("servicio_nombre"),
+            func.coalesce(func.sum(models.OrdenServicio.cantidad), 0).label("total_unidades"),
+            func.coalesce(func.sum(models.RegistroProductividad.valor_productividad), 0).label("total_valor"),
+        )
+        .join(
+            models.OrdenServicio,
+            (models.OrdenServicio.orden_id == models.RegistroProductividad.orden_id)
+            & (models.OrdenServicio.servicio_id == models.RegistroProductividad.servicio_id),
+        )
+        .join(models.Producto, models.Producto.id == models.RegistroProductividad.servicio_id)
+        .filter(
+            models.RegistroProductividad.operador_id == operador_id,
+            models.RegistroProductividad.fecha >= filtered_start_utc,
+            models.RegistroProductividad.fecha <= filtered_end_utc
+        )
+        .group_by(
+            models.Producto.id,
+            models.Producto.nombre,
+        )
+        .order_by(models.Producto.nombre)
+    )
+    unidades_por_servicio_rows = unidades_por_servicio_query.all()
+
+    unidades_por_servicio_filtrado = [
+        schemas.ProductividadUnidadesPorServicio(
+            servicio_id=row.servicio_id,
+            servicio_nombre=row.servicio_nombre,
+            total_unidades=float(row.total_unidades),
+            total_valor=float(row.total_valor),
+        ) for row in unidades_por_servicio_rows
     ]
 
     return schemas.PanelProductividad(
@@ -1384,7 +1510,8 @@ def get_productividad_operador(db: Session, operador_id: int) -> schemas.PanelPr
         servicios_semana=servicios_semana,
         servicios_mes=servicios_mes,
         ordenes_completadas_semana=ordenes_completadas_semana,
-        grafica_servicios_semana=grafica_servicios_semana
+        grafica_servicios_semana=grafica_servicios_semana,
+        unidades_por_servicio_filtrado=unidades_por_servicio_filtrado
     )
 
 

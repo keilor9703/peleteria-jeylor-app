@@ -4,20 +4,24 @@ import {
     Box, Typography, Grid, Card, CardContent, CircularProgress, Alert, 
     List, ListItem, ListItemText, Divider, Chip, Tabs, Tab, 
     TableContainer, Table, TableBody, TableCell, TableHead, TableRow, Paper, 
-    useMediaQuery, useTheme 
+    useMediaQuery, useTheme, Button
 } from '@mui/material';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 // Refactored data fetching function
-const fetchPanelData = async (setLoading, setPendientes, setProductividad, setHistorial, setError) => {
+const fetchPanelData = async (setLoading, setPendientes, setProductividad, setHistorial, setError, startDate = null, endDate = null) => {
     try {
         setLoading(true);
         const [pendientesRes, productividadRes, historialRes] = await Promise.all([
             getPanelOperadorPendientes(),
-            getPanelOperadorProductividad(),
+            getPanelOperadorProductividad(startDate ? startDate.format('YYYY-MM-DD') : null, endDate ? endDate.format('YYYY-MM-DD') : null),
             getPanelOperadorHistorial()
         ]);
         setPendientes(pendientesRes.data);
@@ -106,14 +110,16 @@ const PanelOperador = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [currentTab, setCurrentTab] = useState(0); // State for active tab
+    const [startDate, setStartDate] = useState(null); // New state for start date filter
+    const [endDate, setEndDate] = useState(null);     // New state for end date filter
 
-    const theme = useTheme(); // Add this
-    const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // Add this
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-    // Effect to fetch data on component mount
+    // Effect to fetch data on component mount and when dates change
     useEffect(() => {
-        fetchPanelData(setLoading, setPendientes, setProductividad, setHistorial, setError);
-    }, []); // Empty dependency array means it runs once on mount
+        fetchPanelData(setLoading, setPendientes, setProductividad, setHistorial, setError, startDate, endDate);
+    }, [startDate, endDate]); // Re-run when startDate or endDate changes
 
     const handleTabChange = (event, newValue) => {
         setCurrentTab(newValue);
@@ -249,49 +255,121 @@ const PanelOperador = () => {
                 </Card>
             </TabPanel>
 
-            <TabPanel value={currentTab} index={1}>
-                <Card elevation={3}>
-                    <CardContent>
-                        <Typography variant="h5" gutterBottom>Panel de Productividad (Unidades)</Typography>
-                        {productividad && (
-                            <Grid container spacing={2} alignItems="center">
-                                <Grid item xs={12} sm={6}>
-                                    <Card sx={{ textAlign: 'center', p: 1, backgroundColor: '#f0f4f8' }}>
-                                        <Typography variant="h6" color="black">{productividad.servicios_hoy}</Typography>
-                                        <Typography variant="body2" color="black">Unidades Hoy</Typography>
-                                    </Card>
-                                </Grid>
-                                <Grid item xs={12} sm={6}>
-                                    <Card sx={{ textAlign: 'center', p: 1, backgroundColor: '#e8f5e9' }}>
-                                        <Typography variant="h6" color="black">{productividad.servicios_semana}</Typography>
-                                        <Typography variant="body2" color="black">Unidades Semana</Typography>
-                                    </Card>
-                                </Grid>
-                                <Grid item xs={12} sm={6}>
-                                    <Card sx={{ textAlign: 'center', p: 1, backgroundColor: '#e3f2fd' }}>
-                                        <Typography variant="h6" color="black">{productividad.servicios_mes}</Typography>
-                                        <Typography variant="body2" color="black">Unidades Mes</Typography>
-                                    </Card>
-                                </Grid>
-                                <Grid item xs={12} sm={6}>
-                                    <Card sx={{ textAlign: 'center', p: 1, backgroundColor: '#fff3e0' }}>
-                                        <Typography variant="h6" color="black">{productividad.ordenes_completadas_semana}</Typography>
-                                        <Typography variant="body2" color="black">Órdenes Cerradas (Semana)</Typography>
-                                    </Card>
-                                </Grid>
-                                <Grid item xs={12} sx={{ mt: 2 }}>
-                                    <Typography variant="h6" align="center">Unidades de Servicio de la Semana</Typography>
-                                    {productividad.grafica_servicios_semana.length > 0 ? (
-                                        <Doughnut data={chartData} />
-                                    ) : (
-                                        <Typography align="center" sx={{ mt: 2 }}>No hay datos de servicios para mostrar.</Typography>
-                                    )}
-                                </Grid>
-                            </Grid>
-                        )}
-                    </CardContent>
-                </Card>
-            </TabPanel>
+          <TabPanel value={currentTab} index={1}>
+  <Card elevation={3}>
+    <CardContent>
+      <Typography variant="h5" gutterBottom>Panel de Productividad (Unidades)</Typography>
+
+      {productividad && (
+        <>
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <Box sx={{ display: 'flex', gap: 2, mb: 3, flexDirection: isMobile ? 'column' : 'row' }}>
+              <DatePicker
+                label="Fecha Inicio"
+                value={startDate}
+                onChange={(newValue) => setStartDate(newValue)}
+                slotProps={{ textField: { fullWidth: isMobile } }}
+              />
+              <DatePicker
+                label="Fecha Fin"
+                value={endDate}
+                onChange={(newValue) => setEndDate(newValue)}
+                slotProps={{ textField: { fullWidth: isMobile } }}
+              />
+              <Button
+                variant="contained"
+                onClick={() => fetchPanelData(setLoading, setPendientes, setProductividad, setHistorial, setError, startDate, endDate)}
+                sx={{ height: '56px' }}
+              >
+                Aplicar Filtro
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => { setStartDate(null); setEndDate(null); }}
+                sx={{ height: '56px' }}
+              >
+                Limpiar Filtro
+              </Button>
+            </Box>
+          </LocalizationProvider>
+
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} sm={6}>
+              <Card sx={{ textAlign: 'center', p: 1, backgroundColor: '#f0f4f8' }}>
+                <Typography variant="h6" color="black">{productividad.servicios_hoy}</Typography>
+                <Typography variant="body2" color="black">Unidades Hoy</Typography>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Card sx={{ textAlign: 'center', p: 1, backgroundColor: '#e8f5e9' }}>
+                <Typography variant="h6" color="black">{productividad.servicios_semana}</Typography>
+                <Typography variant="body2" color="black">Unidades Semana</Typography>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Card sx={{ textAlign: 'center', p: 1, backgroundColor: '#e3f2fd' }}>
+                <Typography variant="h6" color="black">{productividad.servicios_mes}</Typography>
+                <Typography variant="body2" color="black">Unidades Mes</Typography>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Card sx={{ textAlign: 'center', p: 1, backgroundColor: '#fff3e0' }}>
+                <Typography variant="h6" color="black">{productividad.ordenes_completadas_semana}</Typography>
+                <Typography variant="body2" color="black">Órdenes Cerradas (Semana)</Typography>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} sx={{ mt: 2 }}>
+              <Typography variant="h6" align="center">Unidades de Servicio por Periodo (Gráfica)</Typography>
+              {productividad.grafica_servicios_semana.length > 0 ? (
+                <Doughnut data={chartData} />
+              ) : (
+                <Typography align="center" sx={{ mt: 2 }}>
+                  No hay datos de servicios para mostrar en la gráfica.
+                </Typography>
+              )}
+            </Grid>
+
+            <Grid item xs={12} sx={{ mt: 4 }}>
+              <Typography variant="h6" gutterBottom align="center">
+                Total de Unidades por Tipo de Servicio (Tabla)
+              </Typography>
+              {productividad.unidades_por_servicio_filtrado.length > 0 ? (
+                <TableContainer component={Paper} sx={{ mt: 2 }}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Servicio</TableCell>
+                        <TableCell align="right">Unidades</TableCell>
+                        <TableCell align="right">Valor Total</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {productividad.unidades_por_servicio_filtrado.map((row) => (
+                        <TableRow key={row.servicio_id}>
+                          <TableCell>{row.servicio_nombre}</TableCell>
+                          <TableCell align="right">{row.total_unidades}</TableCell>
+                          <TableCell align="right">
+                            ${row.total_valor.toLocaleString('es-CO')}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                <Typography align="center" sx={{ mt: 2 }}>
+                  No hay datos de unidades por servicio para mostrar en la tabla.
+                </Typography>
+              )}
+            </Grid>
+          </Grid>
+        </>
+      )}
+    </CardContent>
+  </Card>
+</TabPanel>
+
 
             <TabPanel value={currentTab} index={2}>
                 <Card elevation={3}>

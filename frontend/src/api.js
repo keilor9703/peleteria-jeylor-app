@@ -40,8 +40,13 @@ export const getPanelOperadorPendientes = () => {
   return apiClient.get('/panel_operador/pendientes');
 };
 
-export const getPanelOperadorProductividad = () => {
-  return apiClient.get('/panel_operador/productividad');
+export const getPanelOperadorProductividad = (startDate, endDate) => {
+  return apiClient.get('/panel_operador/productividad', {
+    params: {
+      start_date: startDate,
+      end_date: endDate,
+    },
+  });
 };
 
 export const getPanelOperadorHistorial = () => {
