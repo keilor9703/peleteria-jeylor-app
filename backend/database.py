@@ -13,7 +13,7 @@ if not logger.handlers:
 # ---------------------------------------------------------------------
 # Configuración de conexión
 # ---------------------------------------------------------------------
-DATABASE_URL = os.getenv("https://ycsjvyprtqsxcdzwweit.supabase.co", "sqlite:///./sales.db").strip()
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./sales.db").strip()
 
 IS_SQLITE = DATABASE_URL.startswith("sqlite")
 
