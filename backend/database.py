@@ -19,10 +19,10 @@ IS_SQLITE = DATABASE_URL.startswith("sqlite")
 
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False} if IS_SQLITE else {},
-    pool_pre_ping=True,           # evita conexiones muertas (Postgres/MySQL)
-    future=True,                  # API moderna SQLAlchemy 1.4+/2.x
+    pool_pre_ping=True,
+    future=True,
 )
+
 
 SessionLocal = sessionmaker(
     autocommit=False,
