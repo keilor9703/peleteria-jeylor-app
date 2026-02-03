@@ -1211,9 +1211,6 @@ def marcar_notificacion_leida(db: Session, notificacion_id: int, usuario_id: int
         db.refresh(db_notificacion)
     return db_notificacion
 
-
-# --- CRUD para Reporte de Productividad ---
-
 # --- CRUD para Reporte de Productividad ---
 
 def get_reporte_productividad(db: Session, start_date: date, end_date: date):

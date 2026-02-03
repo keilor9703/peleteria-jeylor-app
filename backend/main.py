@@ -16,8 +16,11 @@ from fastapi.responses import StreamingResponse
 from io import BytesIO
 import pandas as pd
 from fastapi.responses import StreamingResponse
+from contextlib import asynccontextmanager
 
-
+from fastapi import APIRouter, UploadFile, File, Query
+import shutil
+import os
 
 
 models.Base.metadata.create_all(bind=engine)
@@ -56,7 +59,7 @@ app.add_middleware(
 
 
 # Configuración de seguridad para JWT
-SECRET_KEY = "a-very-secure-random-key-that-should-be-in-env-for-production-1234567890" # ¡CAMBIA ESTO EN PRODUCCIÓN! Considera usar variables de entorno.
+SECRET_KEY = "OQyHPr8noUeb9RyN/djtBw==," # ¡CAMBIA ESTO EN PRODUCCIÓN! Considera usar variables de entorno.
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 120
 
@@ -111,12 +114,31 @@ def initialize_default_data(db: Session):
         crud.create_user(db, schemas.UserCreate(username="admin", password="adminpass", role_id=admin_role.id))
 
 @app.on_event("startup")
-async def startup_event():
+def startup_event():
+    # 1. Crear tablas si no existen
+    models.Base.metadata.create_all(bind=engine)
+
+    # 2. Ejecutar migraciones manuales
+    run_migrations()
+
+    # 3. Sembrar datos iniciales (roles, módulos, admin)
     db = SessionLocal()
     try:
         initialize_default_data(db)
     finally:
         db.close()
+
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     db = SessionLocal()
+#     try:
+#         initialize_default_data(db)
+#     finally:
+#         db.close()
+#     yield
+
+# app = FastAPI(lifespan=lifespan)
+
 
 # Funciones de utilidad para JWT
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -128,6 +150,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
 
 def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
@@ -730,9 +753,6 @@ def get_dashboard_report(
 
 # --- Endpoints para Órdenes de Trabajo y Productividad ---
 
-from fastapi import APIRouter, UploadFile, File, Query
-import shutil
-import os
 
 # Crear un directorio para las evidencias si no existe
 EVIDENCE_DIR = "evidencias"

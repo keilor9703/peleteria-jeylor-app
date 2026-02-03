@@ -12,3 +12,14 @@ echo.
 echo Ambos servidores se estan iniciando en ventanas separadas.
 echo La aplicacion estara lista en unos momentos.
 echo Para detener la aplicacion, simplemente cierra las dos nuevas ventanas de la terminal.
+
+
+
+REM cd /d D:\APP_JEYLOR\APP\peleteria-jeylor-app
+REM call .venv\Scripts\activate.bat
+REM python -V
+REM where python
+
+
+REM cd backend
+REM uvicorn main:app --host 0.0.0.0 --port 8000 --reload
