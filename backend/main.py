@@ -43,6 +43,8 @@ origins = [
    "https://golden-gumption-0edc3a.netlify.app:8000",
    "https://frolicking-belekoy-f0e791.netlify.app:8000",
    "https://peleteria-jeylor-app.vercel.app",
+   "https://appksmp.vercel.app/"
+
    # Si estás probando desde un dispositivo móvil en tu red local, añade aquí la IP de tu dispositivo móvil y el puerto del frontend (normalmente 3000).
    # Ejemplo: "http://192.168.1.X:3000", donde X es la IP de tu móvil.
 

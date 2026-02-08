@@ -159,24 +159,28 @@ function App() {
     setDrawerOpen(false);
   };
 
+  
+  const adminMenuItems = [
+    { path: '/admin/users', text: 'Gestionar Usuarios' },
+    { path: '/admin/roles', text: 'Gestionar Roles' },
+    { path: '/admin/modules', text: 'Gestionar Módulos' },
+  ];
+
+
   const menuItems = [
-    { path: '/panel-operador', text: 'Panel del Operador', icon: <DashboardIcon />, color: 'purple' },
+    
     { path: '/ventas', text: 'Ventas', icon: <ShoppingCart />, color: 'orange' },
-    { path: '/ordenes-trabajo', text: 'Órdenes de Trabajo', icon: <Assignment />, color: 'teal' },
+    
     { path: '/clientes', text: 'Clientes', icon: <People />, color: 'blue' },
     { path: '/productos', text: 'Productos', icon: <Inventory />, color: 'green' },
 
     // { path: '/inventario', text: 'Inventarios', icon: <Inventory />, color: 'green' },
     { path: '/inventario', text: 'Inventarios', icon: <Inventory2OutlinedIcon />, color: 'brown' },
     //{ path: '/reportes-inventario', text: 'Reportes inventario', icon: <AssessmentOutlinedIcon />, color: 'brown' },
+    { path: '/ordenes-trabajo', text: 'Órdenes de Trabajo', icon: <Assignment />, color: 'teal' },
+    { path: '/panel-operador', text: 'Panel del Operador', icon: <DashboardIcon />, color: 'purple' },
 
     { path: '/reportes', text: 'Reportes', icon: <Assessment />, color: 'red' },
-  ];
-
-  const adminMenuItems = [
-    { path: '/admin/users', text: 'Gestionar Usuarios' },
-    { path: '/admin/roles', text: 'Gestionar Roles' },
-    { path: '/admin/modules', text: 'Gestionar Módulos' },
   ];
 
   const collapsedDrawerWidth = `calc(${theme.spacing(7)} + 1px)`;
@@ -240,28 +244,31 @@ function App() {
                 >
                     <DrawerHeader />
                     <Divider />
-                    <List>
-                        {menuItems.map((item) => (
-                            hasAccess(item.path) && (
-                                <ListItem key={item.text} disablePadding sx={{ display: 'block' }}>
-                                    <ListItemButton component={Link} to={item.path} sx={{ minHeight: 48, justifyContent: 'center', px: 2.5 }}>
-                                        <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: item.color }}>
-                                            {item.icon}
-                                        </ListItemIcon>
-                                    </ListItemButton>
-                                </ListItem>
-                            )
-                        ))}
-                        {user?.role?.name === 'Admin' && (
-                             <ListItem disablePadding sx={{ display: 'block' }}>
+                          <List>
+                            {/* 👇 PON ESTO PRIMERO */}
+                            {user?.role?.name === 'Admin' && (
+                              <ListItem disablePadding sx={{ display: 'block' }}>
                                 <ListItemButton sx={{ minHeight: 48, justifyContent: 'center', px: 2.5 }}>
-                                    <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: 'purple' }}>
-                                        <AdminPanelSettings />
-                                    </ListItemIcon>
+                                  <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: 'purple' }}>
+                                    <AdminPanelSettings />
+                                  </ListItemIcon>
                                 </ListItemButton>
-                            </ListItem>
-                        )}
-                    </List>
+                              </ListItem>
+                            )}
+
+                            {/* 👇 LUEGO el resto del menú */}
+                            {menuItems.map((item) => (
+                              hasAccess(item.path) && (
+                                <ListItem key={item.text} disablePadding sx={{ display: 'block' }}>
+                                  <ListItemButton component={Link} to={item.path} sx={{ minHeight: 48, justifyContent: 'center', px: 2.5 }}>
+                                    <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: item.color }}>
+                                      {item.icon}
+                                    </ListItemIcon>
+                                  </ListItemButton>
+                                </ListItem>
+                              )
+                            ))}
+                          </List>
                 </Drawer>
 
                 <Drawer
@@ -280,18 +287,7 @@ function App() {
                     <DrawerHeader />
                     <Divider />
                     <List>
-                        {menuItems.map((item) => (
-                        hasAccess(item.path) && (
-                            <ListItem key={item.text} disablePadding sx={{ display: 'block' }}>
-                                <ListItemButton component={Link} to={item.path} onClick={handleDrawerClose} sx={{ minHeight: 48, justifyContent: 'initial', px: 2.5 }}>
-                                    <ListItemIcon sx={{ minWidth: 0, mr: 3, justifyContent: 'center', color: item.color }}>
-                                    {item.icon}
-                                    </ListItemIcon>
-                                    <ListItemText primary={item.text} sx={{ color: appTheme.palette.text.primary }} />
-                                </ListItemButton>
-                            </ListItem>
-                        )
-                        ))}
+                     
                         {user?.role?.name === 'Admin' && (
                         <>
                             <ListItem disablePadding sx={{ display: 'block' }}>
@@ -316,6 +312,18 @@ function App() {
                             </Collapse>
                         </>
                         )}
+                           {menuItems.map((item) => (
+                        hasAccess(item.path) && (
+                            <ListItem key={item.text} disablePadding sx={{ display: 'block' }}>
+                                <ListItemButton component={Link} to={item.path} onClick={handleDrawerClose} sx={{ minHeight: 48, justifyContent: 'initial', px: 2.5 }}>
+                                    <ListItemIcon sx={{ minWidth: 0, mr: 3, justifyContent: 'center', color: item.color }}>
+                                    {item.icon}
+                                    </ListItemIcon>
+                                    <ListItemText primary={item.text} sx={{ color: appTheme.palette.text.primary }} />
+                                </ListItemButton>
+                            </ListItem>
+                        )
+                        ))}
                     </List>
                 </Drawer>
 
@@ -326,7 +334,7 @@ function App() {
                         <Route path="/ventas" element={<Ventas />} />
                         <Route path="/clientes" element={<Clientes />} />
                         <Route path="/productos" element={<Productos />} />
-                        <Route path="/inventario" element={<InventarioPage />} /> {/* 👈 nuevo */}
+                        <Route path="/inventario" element={<InventarioPage />} /> 
                         <Route path="/reportes-inventario" element={<InventoryReports />} />
                         <Route path="/reportes" element={<Reportes />} />
                         <Route path="/ordenes-trabajo" element={<OrdenesTrabajo user={user} />} />
@@ -342,7 +350,7 @@ function App() {
                     <Box component="footer" sx={{ p: 2, mt: 'auto', textAlign: 'center', borderTop: `1px solid ${appTheme.palette.divider}` }}>
                         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                             <Typography variant="body2" color="text.secondary">
-                                Sistema de información de Peletería Jeylor 2025
+                                Sistema de  de Peletería Jeylor 2026
                             </Typography>
                             <Box
                                 component="img"
