@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { styled, ThemeProvider, useTheme } from '@mui/material/styles'; // Importar useTheme desde @mui/material/styles
 import MuiAppBar from '@mui/material/AppBar';
-import { Toolbar, Typography, Button, IconButton, List, ListItem, ListItemButton, ListItemText, ListItemIcon, Collapse, Box, CircularProgress, Divider, Drawer, Tooltip, CssBaseline, GlobalStyles } from '@mui/material'; // ADD CssBaseline, GlobalStyles
-import { ShoppingCart, People, Inventory, Assessment, AdminPanelSettings, ExpandLess, ExpandMore, Brightness4 as Brightness4Icon, Brightness7 as Brightness7Icon, Assignment, Dashboard as DashboardIcon, Logout as LogoutIcon, Menu as MenuIcon } from '@mui/icons-material'; // Importar MenuIcon
+import { Toolbar, Typography, Button, IconButton, List, ListItem, ListItemButton, ListItemText, ListItemIcon, Collapse, Box, CircularProgress, Divider, Drawer, Tooltip, CssBaseline, GlobalStyles, Menu, MenuItem } from '@mui/material'; // ADD CssBaseline, GlobalStyles, Menu, MenuItem
+import { ShoppingCart, People, Inventory, Assessment, AdminPanelSettings, ExpandLess, ExpandMore, Brightness4 as Brightness4Icon, Brightness7 as Brightness7Icon, Assignment, Dashboard as DashboardIcon, Logout as LogoutIcon, Menu as MenuIcon, MoreVert as MoreVertIcon } from '@mui/icons-material'; // Importar MenuIcon, MoreVertIcon
 import useMediaQuery from '@mui/material/useMediaQuery'; // Importar useMediaQuery
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import { Route, Routes, Link, useNavigate, Navigate } from 'react-router-dom';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
-import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
+//import AssessmentOutlinedIcon from './components/AssessmentOutlinedIcon';
 
 import apiClient from './api';
 import getAppTheme from './theme';
@@ -42,23 +42,29 @@ const DrawerHeader = styled('div')(({ theme }) => ({
   ...theme.mixins.toolbar,
 }));
 
-const AppBar = styled(MuiAppBar, {
-  shouldForwardProp: (prop) => prop !== 'open',
-})(({ theme, open }) => ({
+// const AppBar = styled(MuiAppBar, {
+//   shouldForwardProp: (prop) => prop !== 'open',
+// })(({ theme, open }) => ({
+//   zIndex: theme.zIndex.drawer + 1,
+//   transition: theme.transitions.create(['width', 'margin'], {
+//     easing: theme.transitions.easing.sharp,
+//     duration: theme.transitions.duration.leavingScreen,
+//   }),
+//   ...(open && {
+//     marginLeft: drawerWidth,
+//     width: `calc(100% - ${drawerWidth}px)`,
+//     transition: theme.transitions.create(['width', 'margin'], {
+//       easing: theme.transitions.easing.sharp,
+//       duration: theme.transitions.duration.enteringScreen,
+//     }),
+//   }),
+// }));
+
+const AppBar = styled(MuiAppBar)(({ theme }) => ({
   zIndex: theme.zIndex.drawer + 1,
-  transition: theme.transitions.create(['width', 'margin'], {
-    easing: theme.transitions.easing.sharp,
-    duration: theme.transitions.duration.leavingScreen,
-  }),
-  ...(open && {
-    marginLeft: drawerWidth,
-    width: `calc(100% - ${drawerWidth}px)`,
-    transition: theme.transitions.create(['width', 'margin'], {
-      easing: theme.transitions.easing.sharp,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
-  }),
+  width: '100%',
 }));
+
 
 const StyledDrawer = styled(Drawer, { shouldForwardProp: (prop) => prop !== 'open' })(
   ({ theme, open }) => ({
@@ -73,6 +79,13 @@ const StyledDrawer = styled(Drawer, { shouldForwardProp: (prop) => prop !== 'ope
         duration: theme.transitions.duration.enteringScreen,
       }),
       '& .MuiDrawer-paper': {
+
+        position: 'fixed',
+        left: 0,
+        top: 0,
+        height: '100vh',
+        zIndex: theme.zIndex.appBar - 1, // o drawer + 2
+
         width: drawerWidth,
         overflowX: 'hidden',
         transition: theme.transitions.create('width', {
@@ -131,6 +144,10 @@ function App() {
   const [mobileOpen, setMobileOpen] = useState(false); // Estado para el drawer en móvil
   const [adminOpen, setAdminOpen] = useState(false);
   const navigate = useNavigate();
+
+  // State for the contextual menu
+  const [anchorEl, setAnchorEl] = useState(null); // NEW
+  const openMenu = Boolean(anchorEl); // NEW
 
   const [mode, setMode] = useState(() => {
     const storedMode = localStorage.getItem('themeMode');
@@ -220,6 +237,14 @@ function App() {
     setMobileOpen(!mobileOpen);
   };
   
+  const handleMenuOpen = (event) => { // NEW
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => { // NEW
+    setAnchorEl(null);
+  };
+
   const adminMenuItems = [
     { path: '/admin/users', text: 'Gestionar Usuarios' },
     { path: '/admin/roles', text: 'Gestionar Roles' },
@@ -299,18 +324,61 @@ function App() {
                         </Typography>
                       </Link>
                     </Box>
-                    <IconButton sx={{ ml: 1 }} onClick={handleThemeToggle} color="inherit">
-                      {mode === 'dark' ? <Brightness4Icon /> : <Brightness7Icon />}
-                    </IconButton>
-                    <Notifications />
-                    <Typography variant="body1" sx={{ mr: 2, ml: 2 }}>
-                      Bienvenido, {user?.username}
-                    </Typography>
-                    <Tooltip title="Cerrar Sesión">
-                      <IconButton color="inherit" onClick={() => handleLogout()}>
-                        <LogoutIcon />
-                      </IconButton>
-                    </Tooltip>
+                    {!isMobile && ( // Desktop actions
+                      <>
+                        <IconButton sx={{ ml: 1 }} onClick={handleThemeToggle} color="inherit">
+                          {mode === 'dark' ? <Brightness4Icon /> : <Brightness7Icon />}
+                        </IconButton>
+                        <Notifications />
+                        <Typography variant="body1" sx={{ mr: 2, ml: 2 }}>
+                          Bienvenido, {user?.username}
+                        </Typography>
+                        <Tooltip title="Cerrar Sesión">
+                          <IconButton color="inherit" onClick={() => handleLogout()}>
+                            <LogoutIcon />
+                          </IconButton>
+                        </Tooltip>
+                      </>
+                    )}
+                    {isMobile && ( // Mobile actions (contextual menu)
+                      <>
+                        <IconButton
+                          aria-label="more"
+                          aria-controls={openMenu ? 'long-menu' : undefined}
+                          aria-expanded={openMenu ? 'true' : undefined}
+                          aria-haspopup="true"
+                          onClick={handleMenuOpen}
+                          color="inherit"
+                        >
+                          <MoreVertIcon />
+                        </IconButton>
+                        <Menu
+                          id="long-menu"
+                          MenuListProps={{
+                            'aria-labelledby': 'long-button',
+                          }}
+                          anchorEl={anchorEl}
+                          open={openMenu}
+                          onClose={handleMenuClose}
+                          PaperProps={{
+                            style: {
+                              maxHeight: 48 * 4.5,
+                              width: '20ch',
+                            },
+                          }}
+                        >
+                          <MenuItem onClick={() => { handleThemeToggle(); handleMenuClose(); }}>
+                            {mode === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}
+                          </MenuItem>
+                          <MenuItem onClick={() => { /* Notifications logic here */ handleMenuClose(); }}>
+                            Notificaciones
+                          </MenuItem>
+                          <MenuItem onClick={() => { handleLogout(); handleMenuClose(); }}>
+                            Cerrar Sesión
+                          </MenuItem>
+                        </Menu>
+                      </>
+                    )}
                   </Toolbar>
                 </AppBar>
 
@@ -478,17 +546,20 @@ function App() {
                       easing: theme.transitions.easing.sharp,
                       duration: theme.transitions.duration.leavingScreen,
                     }),
-                    ...(drawerOpen && !isMobile && {
-                      ml: `${drawerWidth}px`,
-                      transition: (theme) => theme.transitions.create('margin', {
-                        easing: theme.transitions.easing.sharp,
-                        duration: theme.transitions.duration.enteringScreen,
-                      }),
-                    }),
-                    width: isMobile ? '100%' : `calc(100% - ${collapsedDrawerWidth}px)`, // Ajustar ancho en móvil
-                    ...(drawerOpen && !isMobile && {
-                      width: `calc(100% - ${drawerWidth}px)`,
-                    }),
+                    // ...(drawerOpen && !isMobile && {
+                    //   ml: `${drawerWidth}px`,
+                    //   transition: (theme) => theme.transitions.create('margin', {
+                    //     easing: theme.transitions.easing.sharp,
+                    //     duration: theme.transitions.duration.enteringScreen,
+                    //   }),
+                    // }),
+                    // width: isMobile ? '100%' : `calc(100% - ${collapsedDrawerWidth}px)`, // Ajustar ancho en móvil
+                    // ...(drawerOpen && !isMobile && {
+                    //   width: `calc(100% - ${drawerWidth}px)`,
+                    // }),
+                      ml: !isMobile ? `${collapsedDrawerWidth}px` : 0,
+                      width: !isMobile ? `calc(100% - ${collapsedDrawerWidth}px)` : '100%',
+
                   }}
                 >
                   <DrawerHeader />
