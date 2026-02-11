@@ -32,18 +32,17 @@ app = FastAPI()
 # Configuración de CORS
 origins = [
     "http://localhost:3000",
-    "http://192.168.1.11:3000", # Añadido para permitir el acceso desde la red local
-    "http://10.73.45.191:3000",
-    "http://10.88.1.107:3000", # Añadido para permitir el acceso desde el otro dispositivo     
-   "http://192.168.133.20:3000",
-    "http://10.88.1.65:3000",
-   "http://192.168.23.171:3000",
-   "http://192.168.20.133:3000",
-   "https://golden-gumption-0edc3a.netlify.app/",
-   "https://golden-gumption-0edc3a.netlify.app:8000",
-   "https://frolicking-belekoy-f0e791.netlify.app:8000",
+   "http://127.0.0.1:3000"
+
    "https://peleteria-jeylor-app.vercel.app",
-   "https://appksmp.vercel.app"
+   "https://appksmp.vercel.app",
+
+   
+    "https://app.appjeylor.com",
+    "https://appjeylor.com",      # por si en algún momento entras sin subdominio
+
+    # si piensas llamar la API directo desde navegador:
+    "https://api.appjeylor.com",
 
    # Si estás probando desde un dispositivo móvil en tu red local, añade aquí la IP de tu dispositivo móvil y el puerto del frontend (normalmente 3000).
    # Ejemplo: "http://192.168.1.X:3000", donde X es la IP de tu móvil.
