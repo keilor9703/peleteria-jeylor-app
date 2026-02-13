@@ -38,7 +38,7 @@ const Login = ({ onLogin }) => {
         <Container component="main" maxWidth="xs">
             <Card sx={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', p: 2 }}>
                 <Box sx={{ width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', m: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    <img src={process.env.PUBLIC_URL + '/Logo.jpeg'} alt="Peleteria Jeylor Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    <img src={process.env.PUBLIC_URL + '/Logo.jpeg'} alt="Ksmart360 Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 </Box>
                 <Typography component="h1" variant="h5" color="text.primary">
                     Iniciar Sesión

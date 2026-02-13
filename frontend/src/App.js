@@ -126,11 +126,11 @@ const Home = () => {
           borderRadius: '15px',
           mb: 3,
         }}
-        alt="Peleteria Jeylor Logo"
+        alt="Ksmart360 Logo"
         src={process.env.PUBLIC_URL + '/Logo1.jpg'}
       />
       <Typography variant="h4" component="h2" sx={{ color: theme.palette.text.primary }}>
-        Bienvenido al Sistema de Ventas de Peleteria Jeylor
+        Bienvenido a KSmart360, La nueva forma de gestionar tu negocio.
       </Typography>
     </Box>
   );
@@ -320,7 +320,7 @@ function App() {
                           src="/Logo2.png"
                         />
                         <Typography variant="h6" noWrap component="div">
-                          Peleteria Jeylor
+                          KSmart360
                         </Typography>
                       </Link>
                     </Box>
@@ -374,7 +374,7 @@ function App() {
                             Notificaciones
                           </MenuItem>
                           <MenuItem onClick={() => { handleLogout(); handleMenuClose(); }}>
-                            Cerrar Sesión
+                            Salir
                           </MenuItem>
                         </Menu>
                       </>
@@ -584,7 +584,7 @@ function App() {
                   <Box component="footer" sx={{ p: 2, mt: 'auto', textAlign: 'center', borderTop: `1px solid ${appTheme.palette.divider}` }}>
                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                       <Typography variant="body2" color="text.secondary">
-                        Sistema de  de Peletería Jeylor 2026
+                        Powered by Jeylor Systems
                       </Typography>
                       <Box
                         component="img"

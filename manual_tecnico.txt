@@ -96,7 +96,7 @@ Para implementar el dashboard de administrador, se realizaron los siguientes añ
 - `App.js`: Componente principal que gestiona el estado de autenticación, la navegación principal (react-router) y el layout general de la aplicación (AppBar, Drawer).
 - `components/`: Directorio que contiene todos los componentes reutilizables y las vistas principales de cada módulo (ej. `Ventas.js`, `Clientes.js`).
 - `api.js`: Contiene la instancia preconfigurada de `axios`. Incluye un interceptor para añadir automáticamente el `Authorization: Bearer <token>` a todas las peticiones salientes.
-- `public/index.html`: Plantilla HTML principal. Se modificó el tag `<title>` a "Peleteria Jeylor App".
+- `public/index.html`: Plantilla HTML principal. Se modificó el tag `<title>` a "KSmart360 App".
 
 4.2. Implementación del Dashboard (Novedad)
 
